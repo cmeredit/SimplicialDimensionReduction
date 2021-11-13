@@ -184,7 +184,7 @@ class Main {
 
           val simplexVertices = Vector(sphereCoord(phi + 0.025, theta), sphereCoord(phi - 0.025, theta - 0.05), sphereCoord(phi - 0.025, theta + 0.05))
 
-          val (dist, normalGuess): (Vector[Double] => Double, Vector[Double]) = LinearUtil.getSignedDistanceFunctionToHyperplane(simplexVertices)
+          val (dist, normalGuess): (Vector[Double] => Double, Vector[Double]) = LinearUtil.getSignedDistAndNormalToHyperplane(simplexVertices)
 
           val normal: Vector[Double] = if (dist(Vector(0.0, 0.0, 0.0)) <= 0.0) normalGuess else normalGuess.map(_ * -1.0)
 

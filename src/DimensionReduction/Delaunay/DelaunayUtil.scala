@@ -67,8 +67,8 @@ object DelaunayUtil {
 //      println(trueVertices.length)
 
       trueVertices.combinations(simplex.vertices.length - 1).map((smallSubsetOfVertices: Vector[Vector[Double]]) => {
-        val absDist: Vector[Double] => Double = (v: Vector[Double]) => scala.math.abs(LinearUtil.getSignedDistanceFunctionToHyperplane(smallSubsetOfVertices)._1(v))
-        val normal: Vector[Double] = LinearUtil.getSignedDistanceFunctionToHyperplane(smallSubsetOfVertices)._2
+        val absDist: Vector[Double] => Double = (v: Vector[Double]) => scala.math.abs(LinearUtil.getSignedDistAndNormalToHyperplane(smallSubsetOfVertices)._1(v))
+        val normal: Vector[Double] = LinearUtil.getSignedDistAndNormalToHyperplane(smallSubsetOfVertices)._2
 
         Simplex(smallSubsetOfVertices, absDist, normal)
       }).distinctBy(_.vertices.toSet)
@@ -85,11 +85,11 @@ object DelaunayTest extends App {
 
   QuickHullUtil.DebugPrinter.shouldPrint = false
 
-  val mypoints: Vector[Vector[Double]] = (0 until 100).map(_ => Vector(random(), random())).toVector
+  val myPoints: Vector[Vector[Double]] = (0 until 100).map(_ => Vector(random(), random())).toVector
 
-  mypoints foreach {case Vector(x, y) => println("(" + x + ", " + y + ")")}
+  myPoints foreach {case Vector(x, y) => println("(" + x + ", " + y + ")")}
 
-  val triangulation: Vector[Simplex] = DelaunayUtil.getDelaunaySimplicialization(mypoints)
+  val triangulation: Vector[Simplex] = DelaunayUtil.getDelaunaySimplicialization(myPoints)
 
   triangulation foreach {(simplex: Simplex) =>
 //    println("Simplex:")

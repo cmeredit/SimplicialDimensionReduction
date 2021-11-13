@@ -1,33 +1,34 @@
 package DimensionReduction.Delaunay
 
-/** Provides several Linear Algebra functions, such as getting the RREF of a matrix.
+/** Provides several Linear Algebra functions.
  *
+ *  This object is meant to provide several quality of life functions for working with vectors. The most significant
+ *  of which is [[LinearUtil.getSignedDistAndNormalToHyperplane]], which when given a collection of points that
+ *  define a hyperplane of the appropriate dimension, returns the distance function associated to that hyperplane
+ *  as well as a unit normal vector to that hyperplane.
  */
 object LinearUtil {
   // Assume: "points" all lie on some hyperplane
   // Goal: Find a function that returns the signed distance from a point to ***A*** half space determined by that
   // hyperplane
-  def getSignedDistanceFunctionToHyperplane(points: Vector[Vector[Double]], tolerance: Double = 0.0): (Vector[Double] => Double, Vector[Double])  = {
+  /** Returns the signed distance function and a normal vector to the hyperplane determined by the supplied points. */
+  def getSignedDistAndNormalToHyperplane(points: Vector[Vector[Double]], tolerance: Double = 0.0): (Vector[Double] => Double, Vector[Double])  = {
 
     val basePoint: Vector[Double] = points.head
     val basis: Vector[Vector[Double]] = points.tail.map(p => p.zip(basePoint).map(coordPair => coordPair._1 - coordPair._2))
-
     val normalVector: Vector[Double] = getUnitNormalVector(basis)
 
-//    println("Base point:")
-//    println(basePoint)
-//    println("Basis:")
-//    println(basis)
-//    println("Normal vector:")
-//    println(normalVector)
-
-    ((v: Vector[Double]) => {
+    (
+      (v: Vector[Double]) => {
       val offsetV: Vector[Double] = v.zip(basePoint).map(pair => pair._1 - pair._2)
       val distEstimate: Double = normalVector.zip(offsetV).map(pair => pair._1 * pair._2).sum
       if (scala.math.abs(distEstimate) < tolerance) 0.0 else distEstimate
-    }, normalVector)
+      },
+      normalVector
+    )
   }
 
+  /** normalizes the given vector. */
   def normalize(v: Vector[Double]): Vector[Double] = {
     val mag = scala.math.sqrt(v.map(c => c * c).sum)
     v.map(_ / mag)
@@ -35,37 +36,35 @@ object LinearUtil {
 
   // Get a normal vector to the hyperplane with the given basis (does not guarantee anything about orientation)
   // THIS BETTER ACTUALLY BE A BASIS. IF IT'S NOT, THEN ANY ERRORS ARE YOUR FAULT
+  /** Returns a vector that is normal to the hyperplane with the given basis. */
   def getUnitNormalVector(basis: Vector[Vector[Double]]): Vector[Double] = {
-
-//    println(basis)
-
+    // A basis must contain at least one vector.
     assert(basis.nonEmpty)
+    // A basis cannot consist of dimension-zero vectors.
     assert(basis.head.nonEmpty)
+    // A basis of a hyperplane of codimension 1 must contain a number of vectors equal to the dimension of the vectors
+    // minus one
     assert(basis.length == basis.head.length - 1)
+    // A basis must contain vectors of uniform dimension.
+    assert(basis.map(_.length).distinct.length == 1)
 
     val rref: Vector[Vector[Double]] = getRREF(basis)
-
-//    println("RREF")
-//    rref foreach println
-
     val pivotPositions: Vector[Int] = basis.indices.flatMap(rref(_).zipWithIndex.find(_._1 != 0.0).map(_._2)).toVector
-
-//    println("Pivot positions")
-//    println(pivotPositions)
-
     val nonpivotIndex: Int = basis.head.indices.filter(!pivotPositions.contains(_)).head
-
-//    println("Nonpivot Index")
-//    println(nonpivotIndex)
-
     val rrefTranspose: Vector[Vector[Double]] = rref.transpose
     val nonpivotColumn: Vector[Double] = rrefTranspose(nonpivotIndex)
 
+    // Concerned about -0.0? Me too.
     val mostOfNormal: Vector[Double] = nonpivotColumn.map(entry => if (entry == 0.0) 0.0 else -1.0 * entry)
 
-    normalize(mostOfNormal.dropRight(mostOfNormal.length - nonpivotIndex) ++ Vector(1.0) ++ mostOfNormal.drop(nonpivotIndex))
+    normalize(
+      mostOfNormal.dropRight(mostOfNormal.length - nonpivotIndex) ++
+      Vector(1.0) ++
+      mostOfNormal.drop(nonpivotIndex)
+    )
   }
 
+  /** Computes the row-reduced echelon form of the supplied matrix using Gaussian elimination. */
   def getRREF(rowMajorMatrix: Vector[Vector[Double]]): Vector[Vector[Double]] = {
 
     def forwardReduce(matrix: Vector[Vector[Double]]): Vector[Vector[Double]] = {
@@ -137,6 +136,7 @@ object LinearUtil {
     backSub(forwardReducedMatrix.map(rescaleByPivot))
   }
 
+  /** Tests if the given points lie on a hyperplane of codimension 1 */
   def doPointsDefineAHyperplaneOfCodimensionOne(points: Vector[Vector[Double]]): Boolean = {
     if (points.isEmpty) // No points
       false
@@ -151,7 +151,9 @@ object LinearUtil {
         val basePoint: Vector[Double] = points.head
         val remainingPoints: Vector[Vector[Double]] = points.tail
 
-        val displacementVectors: Vector[Vector[Double]] = remainingPoints.map((v: Vector[Double]) => v.zip(basePoint).map({case (vCoord, basePointCoord) => vCoord-basePointCoord}))
+        val displacementVectors: Vector[Vector[Double]] = remainingPoints.map((v: Vector[Double]) =>
+          v.zip(basePoint).map({case (vCoord, basePointCoord) => vCoord-basePointCoord})
+        )
 
         val rref: Vector[Vector[Double]] = getRREF(displacementVectors)
 
@@ -164,31 +166,6 @@ object LinearUtil {
     }
   }
 }
-
-//object Test extends App {
-////  LinearUtil.getRREF(Vector(
-////    Vector(0.0, 3.0, -6.0, 6.0, 4.0, -5.0),
-////    Vector(3.0, -7.0, 8.0, -5.0, 8.0, 9.0),
-////    Vector(3.0, -9.0, 12.0, -9.0, 6.0, 15.0)
-////  )) foreach println
-//
-//
-//  println(LinearUtil.getUnitNormalVector(Vector(Vector(1.0, 1.0))))
-//  println(LinearUtil.getUnitNormalVector(Vector(Vector(1.0, 1.0, 0.0), Vector(0.0, 0.0, 1.0))))
-//
-//
-//  val dfunc = LinearUtil.getSignedDistanceFunctionToHyperplane(Vector(
-//    Vector(1.0, 1.0, 1.0),
-//    Vector(2.0, 1.0, 1.0),
-//    Vector(1.0, 2.0, 1.0)
-//  ))
-//
-//  println(dfunc(Vector(1.0, 1.0, 1.0)))
-//  println(dfunc(Vector(0.0, 0.0, 1.0)))
-//  println(dfunc(Vector(0.0, 0.0, 10.0)))
-//
-//}
-
 
 object LinearUtilTest extends App {
   val a: Vector[Double] = Vector(0.9051310475138654, 0.08442008172760171, -0.416666577286393)

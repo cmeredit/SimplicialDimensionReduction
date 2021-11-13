@@ -40,7 +40,7 @@ object QuickHullUtil {
     }
 
     // Store the distance function for that hyperplane
-    val distToStartingVertices: Vector[Double] => Double = LinearUtil.getSignedDistanceFunctionToHyperplane(startingVertices)._1
+    val distToStartingVertices: Vector[Double] => Double = LinearUtil.getSignedDistAndNormalToHyperplane(startingVertices)._1
 
     // Get a the farthest (absolute) point from that hyperplane
     val vertexOfMaximalAbsoluteDistance: Vector[Double] = points.maxBy((v: Vector[Double]) => scala.math.abs(distToStartingVertices(v)))
@@ -69,7 +69,7 @@ object QuickHullUtil {
 //      DebugPrinter.print("Points of this simplex:")
 //      DebugPrinter.print(pointsOfThisSimplex)
 
-      val (distGuess, normal): (Vector[Double] => Double, Vector[Double]) = LinearUtil.getSignedDistanceFunctionToHyperplane(pointsOfThisSimplex)
+      val (distGuess, normal): (Vector[Double] => Double, Vector[Double]) = LinearUtil.getSignedDistAndNormalToHyperplane(pointsOfThisSimplex)
 
       // We want to ensure that the points "above" this simplex are on the opposite side of the simplex from the excluded point.
       // We also want to recognize points "above" this simplex as points with positive signed distance from the simplex.
@@ -159,7 +159,7 @@ object QuickHullUtil {
       }
 
       def createFacet(face: Vector[Vector[Double]], p: Vector[Double]): Simplex = {
-        val (distGuess, normal): (Vector[Double] => Double, Vector[Double]) = LinearUtil.getSignedDistanceFunctionToHyperplane(face ++ Vector(p))
+        val (distGuess, normal): (Vector[Double] => Double, Vector[Double]) = LinearUtil.getSignedDistAndNormalToHyperplane(face ++ Vector(p))
 
 //        val shouldNegateDistance: Boolean = distGuess(pointBelow) >= 0.0
 
