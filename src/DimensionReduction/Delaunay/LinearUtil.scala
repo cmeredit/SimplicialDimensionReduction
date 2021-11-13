@@ -1,5 +1,8 @@
 package DimensionReduction.Delaunay
 
+/** Provides several Linear Algebra functions
+ *
+ */
 object LinearUtil {
   // Assume: "points" all lie on some hyperplane
   // Goal: Find a function that returns the signed distance from a point to ***A*** half space determined by that
@@ -203,5 +206,3 @@ object LinearUtilTest extends App {
   println(LinearUtil.getRREF(Vector(diff(b, a), diff(c, a))))
 
 }
-
-
