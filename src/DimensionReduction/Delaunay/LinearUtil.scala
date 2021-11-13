@@ -1,5 +1,7 @@
 package DimensionReduction.Delaunay
 
+import DimensionReduction.Point
+
 /** Provides several Linear Algebra functions.
  *
  *  This object is meant to provide several quality of life functions for working with vectors. The most significant
@@ -12,15 +14,15 @@ object LinearUtil {
   // Goal: Find a function that returns the signed distance from a point to ***A*** half space determined by that
   // hyperplane
   /** Returns the signed distance function and a normal vector to the hyperplane determined by the supplied points. */
-  def getSignedDistAndNormalToHyperplane(points: Vector[Vector[Double]], tolerance: Double = 0.0): (Vector[Double] => Double, Vector[Double])  = {
+  def getSignedDistAndNormalToHyperplane(points: Vector[Point], tolerance: Double = 0.0): (Point => Double, Point)  = {
 
-    val basePoint: Vector[Double] = points.head
-    val basis: Vector[Vector[Double]] = points.tail.map(p => p.zip(basePoint).map(coordPair => coordPair._1 - coordPair._2))
-    val normalVector: Vector[Double] = getUnitNormalVector(basis)
+    val basePoint: Point = points.head
+    val basis: Vector[Point] = points.tail.map(p => p.zip(basePoint).map(coordPair => coordPair._1 - coordPair._2))
+    val normalVector: Point = getUnitNormalVector(basis)
 
     (
-      (v: Vector[Double]) => {
-      val offsetV: Vector[Double] = v.zip(basePoint).map(pair => pair._1 - pair._2)
+      (v: Point) => {
+      val offsetV: Point = v.zip(basePoint).map(pair => pair._1 - pair._2)
       val distEstimate: Double = normalVector.zip(offsetV).map(pair => pair._1 * pair._2).sum
       if (scala.math.abs(distEstimate) < tolerance) 0.0 else distEstimate
       },
@@ -29,7 +31,7 @@ object LinearUtil {
   }
 
   /** normalizes the given vector. */
-  def normalize(v: Vector[Double]): Vector[Double] = {
+  def normalize(v: Point): Point = {
     val mag = scala.math.sqrt(v.map(c => c * c).sum)
     v.map(_ / mag)
   }
@@ -37,7 +39,7 @@ object LinearUtil {
   // Get a normal vector to the hyperplane with the given basis (does not guarantee anything about orientation)
   // THIS BETTER ACTUALLY BE A BASIS. IF IT'S NOT, THEN ANY ERRORS ARE YOUR FAULT
   /** Returns a vector that is normal to the hyperplane with the given basis. */
-  def getUnitNormalVector(basis: Vector[Vector[Double]]): Vector[Double] = {
+  def getUnitNormalVector(basis: Vector[Point]): Point = {
     // A basis must contain at least one vector.
     assert(basis.nonEmpty)
     // A basis cannot consist of dimension-zero vectors.
@@ -48,14 +50,14 @@ object LinearUtil {
     // A basis must contain vectors of uniform dimension.
     assert(basis.map(_.length).distinct.length == 1)
 
-    val rref: Vector[Vector[Double]] = getRREF(basis)
+    val rref: Vector[Point] = getRREF(basis)
     val pivotPositions: Vector[Int] = basis.indices.flatMap(rref(_).zipWithIndex.find(_._1 != 0.0).map(_._2)).toVector
     val nonpivotIndex: Int = basis.head.indices.filter(!pivotPositions.contains(_)).head
-    val rrefTranspose: Vector[Vector[Double]] = rref.transpose
-    val nonpivotColumn: Vector[Double] = rrefTranspose(nonpivotIndex)
+    val rrefTranspose: Vector[Point] = rref.transpose
+    val nonpivotColumn: Point = rrefTranspose(nonpivotIndex)
 
     // Concerned about -0.0? Me too.
-    val mostOfNormal: Vector[Double] = nonpivotColumn.map(entry => if (entry == 0.0) 0.0 else -1.0 * entry)
+    val mostOfNormal: Point = nonpivotColumn.map(entry => if (entry == 0.0) 0.0 else -1.0 * entry)
 
     normalize(
       mostOfNormal.dropRight(mostOfNormal.length - nonpivotIndex) ++
@@ -65,29 +67,29 @@ object LinearUtil {
   }
 
   /** Computes the row-reduced echelon form of the supplied matrix using Gaussian elimination. */
-  def getRREF(rowMajorMatrix: Vector[Vector[Double]]): Vector[Vector[Double]] = {
+  def getRREF(rowMajorMatrix: Vector[Point]): Vector[Point] = {
 
-    def forwardReduce(matrix: Vector[Vector[Double]]): Vector[Vector[Double]] = {
+    def forwardReduce(matrix: Vector[Point]): Vector[Point] = {
       // Find the first nonzero column
-      val transpose: Vector[Vector[Double]] = matrix.transpose
+      val transpose: Vector[Point] = matrix.transpose
 
       val pivotColumnIndex: Option[Int] = transpose.zipWithIndex.find({case (col, _) => col.exists(_ != 0.0)}).map(_._2)
 
       pivotColumnIndex match {
         case Some(idx) =>
           // Put the nonzero entry of the pivot column on top
-          val reorderedMatrix: Vector[Vector[Double]] = matrix.sortBy(row => scala.math.abs(row(idx))).reverse
+          val reorderedMatrix: Vector[Point] = matrix.sortBy(row => scala.math.abs(row(idx))).reverse
 
 //          println("Reordered matrix...")
 //          reorderedMatrix foreach println
 
-          val pivotRow: Vector[Double] = reorderedMatrix.head
+          val pivotRow: Point = reorderedMatrix.head
           val pivotEntry: Double = pivotRow(idx)
 
 //          println("Pivot row...")
 //          println(pivotRow)
 
-          val eliminatedMatrixTail: Vector[Vector[Double]] = reorderedMatrix.tail.map((row: Vector[Double]) => {
+          val eliminatedMatrixTail: Vector[Point] = reorderedMatrix.tail.map((row: Point) => {
             val scalar: Double = row(idx) / pivotEntry
             row.zip(pivotRow).zipWithIndex.map({case ((rowEntry, pivotEntry), curIdx) => if (curIdx == idx) 0.0 else rowEntry - scalar * pivotEntry})
           })
@@ -103,24 +105,24 @@ object LinearUtil {
       }
     }
 
-    def rescaleByPivot(row: Vector[Double]): Vector[Double] = row.find(_ != 0.0) match {
+    def rescaleByPivot(row: Point): Point = row.find(_ != 0.0) match {
       case Some(firstNonzeroEntry) => row.map(_ / firstNonzeroEntry)
       case None => row
     }
 
-    def backSub(matrix: Vector[Vector[Double]]): Vector[Vector[Double]] = {
+    def backSub(matrix: Vector[Point]): Vector[Point] = {
       if (matrix.isEmpty)
         matrix
       else {
-        val lastRow: Vector[Double] = matrix.reverse.head
-        val firstRows: Vector[Vector[Double]] = matrix.reverse.tail.reverse
+        val lastRow: Point = matrix.reverse.head
+        val firstRows: Vector[Point] = matrix.reverse.tail.reverse
 
         val pivotLocation: Option[Int] = lastRow.zipWithIndex.find(_._1 != 0.0).map(_._2)
 
         pivotLocation match {
           case Some(idx) =>
             val pivotValue = lastRow(idx)
-            val firstRowsEliminated: Vector[Vector[Double]] = firstRows.map(row => row.zip(lastRow).map({case (rowEntry, pivotRowEntry) => rowEntry - pivotRowEntry * row(idx) / pivotValue}))
+            val firstRowsEliminated: Vector[Point] = firstRows.map(row => row.zip(lastRow).map({case (rowEntry, pivotRowEntry) => rowEntry - pivotRowEntry * row(idx) / pivotValue}))
             if (firstRowsEliminated.nonEmpty)
               backSub(firstRowsEliminated) ++ Vector(lastRow)
             else
@@ -132,12 +134,12 @@ object LinearUtil {
 
     }
 
-    val forwardReducedMatrix: Vector[Vector[Double]] = forwardReduce(rowMajorMatrix)
+    val forwardReducedMatrix: Vector[Point] = forwardReduce(rowMajorMatrix)
     backSub(forwardReducedMatrix.map(rescaleByPivot))
   }
 
   /** Tests if the given points lie on a hyperplane of codimension 1 */
-  def doPointsDefineAHyperplaneOfCodimensionOne(points: Vector[Vector[Double]]): Boolean = {
+  def doPointsDefineAHyperplaneOfCodimensionOne(points: Vector[Point]): Boolean = {
     if (points.isEmpty) // No points
       false
     else if (points.map(_.length).distinct.length != 1) // Nonuniform dimension
@@ -148,17 +150,17 @@ object LinearUtil {
       if (points.length != dimension) // Need exactly [dimension] many points. E.g., 2 points in 2d space might define a line
         false
       else {
-        val basePoint: Vector[Double] = points.head
-        val remainingPoints: Vector[Vector[Double]] = points.tail
+        val basePoint: Point = points.head
+        val remainingPoints: Vector[Point] = points.tail
 
-        val displacementVectors: Vector[Vector[Double]] = remainingPoints.map((v: Vector[Double]) =>
+        val displacementVectors: Vector[Point] = remainingPoints.map((v: Point) =>
           v.zip(basePoint).map({case (vCoord, basePointCoord) => vCoord-basePointCoord})
         )
 
-        val rref: Vector[Vector[Double]] = getRREF(displacementVectors)
+        val rref: Vector[Point] = getRREF(displacementVectors)
 
         // If the rref of displacement vectors contains a row of all zeros, then displacementVectors is linearly dependent, so we should return false...
-        rref.find((row: Vector[Double]) => row.forall(_ == 0.0)) match {
+        rref.find((row: Point) => row.forall(_ == 0.0)) match {
           case Some(_) => false // There's a bad row! These points don't define a hyperplane of codimension 1
           case None => true // All rows are nonzero. We're good!
         }
@@ -168,18 +170,14 @@ object LinearUtil {
 }
 
 object LinearUtilTest extends App {
-  val a: Vector[Double] = Vector(0.9051310475138654, 0.08442008172760171, -0.416666577286393)
-  val b: Vector[Double] = Vector(0.9278894781448365, 0.03992321446481126, -0.3707118197399426)
-  val c: Vector[Double] = Vector(0.9192682247682198, 0.13235814155761652, -0.3707118197399426)
+  val a: Point = new Point(Vector(0.9051310475138654, 0.08442008172760171, -0.416666577286393))
+  val b: Point = new Point(Vector(0.9278894781448365, 0.03992321446481126, -0.3707118197399426))
+  val c: Point = new Point(Vector(0.9192682247682198, 0.13235814155761652, -0.3707118197399426))
+
+  println((b-a).get.toString)
+  println((c-a).get.toString)
 
 
-  def diff(x: Vector[Double], y: Vector[Double]): Vector[Double] = x.zip(y).map({case (s, t) => s-t})
-  def str(x: Vector[Double]): String = "(" + x.map(_.toString).reduce(_ + ", " + _) + ")"
-
-  println(str(diff(b, a)))
-  println(str(diff(c, a)))
-
-
-  println(LinearUtil.getRREF(Vector(diff(b, a), diff(c, a))))
+  println(LinearUtil.getRREF(Vector((b-a).get, (c-a).get)))
 
 }

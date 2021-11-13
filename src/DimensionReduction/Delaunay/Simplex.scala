@@ -1,5 +1,7 @@
 package DimensionReduction.Delaunay
 
+import DimensionReduction.Point
+
 /** Represents a Simplex of arbitrary dimension.
  *
  *  A simplex can be represented as a collection of vertices. We augment this representation with a distance function
@@ -11,4 +13,4 @@ package DimensionReduction.Delaunay
  * @param signedDistance The distance to the simplex or its parent hyperplane.
  * @param normalVector A normal vector to the simplex.
  */
-case class Simplex(vertices: Vector[Vector[Double]], signedDistance: Vector[Double] => Double, normalVector: Vector[Double])
+case class Simplex(vertices: Vector[Point], signedDistance: Point => Double, normalVector: Point)
