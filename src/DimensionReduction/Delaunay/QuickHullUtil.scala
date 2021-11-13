@@ -1,6 +1,7 @@
 package DimensionReduction.Delaunay
 
 import DimensionReduction.Delaunay.QuickHullUtil.DebugPrinter
+import DimensionReduction.Point
 
 import scala.math.{cos, random, sin}
 import scala.util.Random
@@ -23,7 +24,7 @@ object QuickHullUtil {
    *  @param points The collection of points whose convex hull is to be computed.
    *  @return The convex hull represented as a collection of simplices.
    */
-  def getConvexHull(points: Vector[Vector[Double]]): Vector[Simplex] = {
+  def getConvexHull(points: Vector[Point]): Vector[Simplex] = {
 
     // Note: This function is referentially transparent despite the use of random initialization and imperative components
     // Emphasize: This code does not have side effects
@@ -31,15 +32,15 @@ object QuickHullUtil {
     // Make sure there are actually enough points to get a nondegenerate hull
     assert(points.nonEmpty)
     // Make sure the points all have the same dimension
-    assert(points.map(_.length).distinct.length == 1)
+    assert(points.map(_.dimension).distinct.length == 1)
 
     // We'll refer to the dimension of our points as "d" in the following comments
-    val dimension = points.head.length
+    val dimension = points.head.dimension
 
     // Todo: Make this nonrandom
     // startingVertices will contain a collection of points that define a hyperplane of codimension 1
-    val startingVertices: Vector[Vector[Double]] = {
-      var vertexCandidates: Vector[Vector[Double]] = Vector()
+    val startingVertices: Vector[Point] = {
+      var vertexCandidates: Vector[Point] = Vector()
       do {
         vertexCandidates = Random.shuffle(points).take(dimension)
       } while (!LinearUtil.doPointsDefineAHyperplaneOfCodimensionOne(vertexCandidates))
@@ -47,18 +48,18 @@ object QuickHullUtil {
     }
 
     // Store the distance function for that hyperplane
-    val distToStartingVertices: Vector[Double] => Double = LinearUtil.getSignedDistAndNormalToHyperplane(startingVertices)._1
+    val distToStartingVertices: Point => Double = LinearUtil.getSignedDistAndNormalToHyperplane(startingVertices)._1
 
     // Get a the farthest (absolute) point from that hyperplane
-    val vertexOfMaximalAbsoluteDistance: Vector[Double] = points.maxBy((v: Vector[Double]) => scala.math.abs(distToStartingVertices(v)))
+    val vertexOfMaximalAbsoluteDistance: Point = points.maxBy((v: Point) => scala.math.abs(distToStartingVertices(v)))
 
 //    DebugPrinter.print("Starting vertices:")
 //    DebugPrinter.print(startingVertices)
 //    DebugPrinter.print("Vertices and their distances to the starting vertices:")
-//    points.foreach((v: Vector[Double]) => DebugPrinter.print(v.toString() + " has dist " + scala.math.abs(distToStartingVertices(v))))
+//    points.foreach((v: Point) => DebugPrinter.print(v.toString() + " has dist " + scala.math.abs(distToStartingVertices(v))))
 
     // Our starting vertices and this far extra vertex will define the d+1 simplices of our initial convex hull.
-    val initialHullVertices: Vector[Vector[Double]] = startingVertices ++ Vector(vertexOfMaximalAbsoluteDistance)
+    val initialHullVertices: Vector[Point] = startingVertices ++ Vector(vertexOfMaximalAbsoluteDistance)
 
 
     // Todo: Functionalize
@@ -68,7 +69,7 @@ object QuickHullUtil {
 
     // Initialize the d+1 simplices that make up our initial convex hull guess
     for (pointToExclude <- initialHullVertices) {
-      val pointsOfThisSimplex: Vector[Vector[Double]] = initialHullVertices.filter(_ != pointToExclude)
+      val pointsOfThisSimplex: Vector[Point] = initialHullVertices.filter(_ != pointToExclude)
 
 
 //      DebugPrinter.print("Point to exclude:")
@@ -76,7 +77,7 @@ object QuickHullUtil {
 //      DebugPrinter.print("Points of this simplex:")
 //      DebugPrinter.print(pointsOfThisSimplex)
 
-      val (distGuess, normal): (Vector[Double] => Double, Vector[Double]) = LinearUtil.getSignedDistAndNormalToHyperplane(pointsOfThisSimplex)
+      val (distGuess, normal): (Point => Double, Point) = LinearUtil.getSignedDistAndNormalToHyperplane(pointsOfThisSimplex)
 
       // We want to ensure that the points "above" this simplex are on the opposite side of the simplex from the excluded point.
       // We also want to recognize points "above" this simplex as points with positive signed distance from the simplex.
@@ -86,11 +87,11 @@ object QuickHullUtil {
       val thisSimplex: Simplex = Simplex(
         pointsOfThisSimplex,
         if (shouldNegateDistanceFunc)
-          (v: Vector[Double]) => -distGuess(v)
+          (v: Point) => -distGuess(v)
         else
           distGuess,
         if (shouldNegateDistanceFunc)
-          normal.map(_ * -1.0)
+          normal * -1.0
         else
           normal
       )
@@ -98,45 +99,45 @@ object QuickHullUtil {
       simplicesToProcess = simplicesToProcess.appended(thisSimplex)
     }
 
-    val verticesToProcess: Vector[Vector[Double]] = Random.shuffle(points.diff(simplicesToProcess.flatMap(_.vertices).distinct))
+    val verticesToProcess: Vector[Point] = Random.shuffle(points.diff(simplicesToProcess.flatMap(_.vertices).distinct))
 
     object ConflictGraph {
-//      private var vertices: Vector[Vector[Double]] = verticesToProcess
+//      private var vertices: Vector[Point] = verticesToProcess
       private var simplices: Vector[Simplex] = simplicesToProcess
-      private var edges: Map[Vector[Double], Vector[Simplex]] = (for (
+      private var edges: Map[Point, Vector[Simplex]] = (for (
         v <- verticesToProcess;
         s <- simplices if s.signedDistance(v) >= 0.0
       ) yield (v, s)).groupBy(_._1).map({case (v, p) => (v, p.map(_._2))})
 
-      def pointIsInConvexHull(p: Vector[Double]): Boolean = {
+      def pointIsInConvexHull(p: Point): Boolean = {
         (!edges.contains(p)) || edges(p).isEmpty
       }
 
-      def getConflictingSimplices(p: Vector[Double]): Vector[Simplex] = {
+      def getConflictingSimplices(p: Point): Vector[Simplex] = {
         if (!edges.contains(p))
           Vector()
         else
           edges(p)
       }
 
-      def getConflictingVertices(s: Simplex): Vector[Vector[Double]] = {
+      def getConflictingVertices(s: Simplex): Vector[Point] = {
 //        edges.filter(_._2.contains(s)).keys.toVector
         edges.keys.filter(s.signedDistance(_) >= 0.0).toVector
       }
 
-      def generateConflictingSimplices(v: Vector[Double]): Vector[Simplex] = {
+      def generateConflictingSimplices(v: Point): Vector[Simplex] = {
         simplices.filter((s: Simplex) => s.signedDistance(v) >= 0.0)
       }
 
-      def generateConflictingVertices(s: Simplex): Vector[Vector[Double]] = {
-        edges.keys.filter((v: Vector[Double]) => s.signedDistance(v) >= 0.0).toVector
+      def generateConflictingVertices(s: Simplex): Vector[Point] = {
+        edges.keys.filter((v: Point) => s.signedDistance(v) >= 0.0).toVector
       }
 
-//      def removeVertex(v: Vector[Double]): Unit = {
+//      def removeVertex(v: Point): Unit = {
 //        vertices = vertices.filter(_ != v)
 //      }
 
-//      def deleteConflicts(p: Vector[Double]): Unit = {
+//      def deleteConflicts(p: Point): Unit = {
 //        if (edges.contains(p)) {
 //          simplices = simplices.diff(edges(p))
 //          edges = edges.updated(p, Vector())
@@ -148,7 +149,7 @@ object QuickHullUtil {
         edges = edges.map({case (v, simps) => (v, simps.diff(simplicesToRemove))}).filter(_._2.nonEmpty)
       }
 
-      def addConflict(p: Vector[Double], s: Simplex): Unit = {
+      def addConflict(p: Point, s: Simplex): Unit = {
         if (edges.contains(p))
           edges = edges.updated(p, edges(p) ++ Vector(s))
         else
@@ -165,8 +166,8 @@ object QuickHullUtil {
         ) yield (visibleSimplex, invisibleSimplex)).distinctBy(p => p._1.vertices.intersect(p._2.vertices).toSet)
       }
 
-      def createFacet(face: Vector[Vector[Double]], p: Vector[Double]): Simplex = {
-        val (distGuess, normal): (Vector[Double] => Double, Vector[Double]) = LinearUtil.getSignedDistAndNormalToHyperplane(face ++ Vector(p))
+      def createFacet(face: Vector[Point], p: Point): Simplex = {
+        val (distGuess, normal): (Point => Double, Point) = LinearUtil.getSignedDistAndNormalToHyperplane(face ++ Vector(p))
 
 //        val shouldNegateDistance: Boolean = distGuess(pointBelow) >= 0.0
 
@@ -174,15 +175,15 @@ object QuickHullUtil {
         val extremalDistance: Double = simplices.flatMap(_.vertices).map(distGuess).maxBy(scala.math.abs)
         val shouldNegateDistance: Boolean = extremalDistance >= 0.0
 
-        val trueDistance: Vector[Double] => Double = if (shouldNegateDistance) (x: Vector[Double]) => -distGuess(x) else distGuess
-        val trueNormal: Vector[Double] = if (shouldNegateDistance) normal.map(_ * -1.0) else normal
+        val trueDistance: Point => Double = if (shouldNegateDistance) (x: Point) => -distGuess(x) else distGuess
+        val trueNormal: Point = if (shouldNegateDistance) normal * -1.0 else normal
 
         val newFacet: Simplex = Simplex(face ++ Vector(p), trueDistance, trueNormal)
 
         newFacet
       }
 
-      def processPoint(pointToProcess: Vector[Double]): Unit = {if (edges.contains(pointToProcess)) {
+      def processPoint(pointToProcess: Point): Unit = {if (edges.contains(pointToProcess)) {
 
 //        println("Convex hull currently contains " + simplices.length + " simplices")
 //        println("There are still " + edges.keys.toVector.length + " vertices outside of the hull.")
@@ -191,15 +192,15 @@ object QuickHullUtil {
         val ridges: Vector[(Simplex, Simplex)] = getRidges(conflicts)
 
         ridges.foreach {case (visibleSimplex, invisibleSimplex) =>
-          val intersectionPoints: Vector[Vector[Double]] = visibleSimplex.vertices.intersect(invisibleSimplex.vertices)
+          val intersectionPoints: Vector[Point] = visibleSimplex.vertices.intersect(invisibleSimplex.vertices)
 
           val newFacet: Simplex = ConflictGraph.createFacet(intersectionPoints, pointToProcess)
 
-          val candidateConflicts: Vector[Vector[Double]] = getConflictingVertices(visibleSimplex) ++ getConflictingVertices(invisibleSimplex)
+          val candidateConflicts: Vector[Point] = getConflictingVertices(visibleSimplex) ++ getConflictingVertices(invisibleSimplex)
 
           simplices = simplices.appended(newFacet)
 
-          candidateConflicts.foreach((candidate: Vector[Double]) => {
+          candidateConflicts.foreach((candidate: Point) => {
             if (newFacet.signedDistance(candidate) >= 0.0)
               edges = edges.updated(candidate, edges(candidate) ++ Vector(newFacet))
           })
@@ -216,14 +217,14 @@ object QuickHullUtil {
 
       def print(): Unit = {
 
-        def makeReadable(v: Vector[Double]): String = v match {
-          case Vector(0.0, 0.0, 1.0) => "A"
-          case Vector(0.0, 0.0, 0.0) => "B"
-          case Vector(-1.0, -1.0, -1.0) => "C"
-          case Vector(-1.0, 1.0, -1.0) => "D"
-          case Vector(1.0, -1.0, -1.0) => "E"
-          case Vector(1.0, 1.0, -1.0) => "F"
-          case any: Vector[Double] => any.toString()
+        def makeReadable(v: Point): String = v match {
+          case Point(Vector(0.0, 0.0, 1.0)) => "A"
+          case Point(Vector(0.0, 0.0, 0.0)) => "B"
+          case Point(Vector(-1.0, -1.0, -1.0)) => "C"
+          case Point(Vector(-1.0, 1.0, -1.0)) => "D"
+          case Point(Vector(1.0, -1.0, -1.0)) => "E"
+          case Point(Vector(1.0, 1.0, -1.0)) => "F"
+          case any: Point => any.toString()
         }
 
         DebugPrinter.print("")
@@ -244,7 +245,7 @@ object QuickHullUtil {
 
     }
 
-    verticesToProcess.zipWithIndex.foreach({case (currentVertex: Vector[Double], index: Int) =>
+    verticesToProcess.zipWithIndex.foreach({case (currentVertex: Point, index: Int) =>
 
       //      println("Working on vertex " + index + " out of " + verticesToProcess.length)
 
@@ -264,13 +265,13 @@ object QuickHullUtil {
 
 object Test extends App {
 
-  val points: Vector[Vector[Double]] = Vector(
-    Vector(0.0, 0.0, 0.0),
-    Vector(0.0, 0.0, 1.0),
-    Vector(-1.0, -1.0, -1.0),
-    Vector(1.0, -1.0, -1.0),
-    Vector(-1.0, 1.0, -1.0),
-    Vector(1.0, 1.0, -1.0)
+  val points: Vector[Point] = Vector(
+    Point(Vector( 0.0,  0.0,  0.0)),
+    Point(Vector( 0.0,  0.0,  1.0)),
+    Point(Vector(-1.0, -1.0, -1.0)),
+    Point(Vector( 1.0, -1.0, -1.0)),
+    Point(Vector(-1.0,  1.0, -1.0)),
+    Point(Vector( 1.0,  1.0, -1.0))
   )
 
 
@@ -280,8 +281,8 @@ object Test extends App {
 //  (0 until 1000) foreach {_ => {
 //    val convexHull: Vector[Simplex] = QuickHullUtil.getConvexHull(points)
 //
-//    val convexHullPoints: Vector[Vector[Double]] = convexHull.flatMap(_.vertices).distinct
-//    val innerPoints: Vector[Vector[Double]] = points.filter((p: Vector[Double]) => !convexHullPoints.contains(p))
+//    val convexHullPoints: Vector[Point] = convexHull.flatMap(_.vertices).distinct
+//    val innerPoints: Vector[Point] = points.filter((p: Point) => !convexHullPoints.contains(p))
 //
 ////    println("Convex hull:")
 ////    convexHullPoints foreach {println}
@@ -296,7 +297,7 @@ object Test extends App {
 //  }}
 
   {
-    val randomCirclePoints: Vector[Vector[Double]] = (0 until 3141).map(_ => {
+    val randomCirclePoints: Vector[Point] = (0 until 3141).map(_ => {
       val angle: Double = random() * 2.0 * scala.math.Pi
       val radius: Double = {
         val v = random() + random()
@@ -304,14 +305,14 @@ object Test extends App {
         if (v >= 1.0) 2.0-v else v
       }
 
-      Vector(radius * cos(angle), radius * sin(angle))
+      Point(Vector(radius * cos(angle), radius * sin(angle)))
     }).toVector
 
 
     val convexHull: Vector[Simplex] = QuickHullUtil.getConvexHull(randomCirclePoints)
 
-    val convexHullPoints2: Vector[Vector[Double]] = convexHull.flatMap(_.vertices).distinct
-    val innerPoints2: Vector[Vector[Double]] = randomCirclePoints.filter((p: Vector[Double]) => !convexHullPoints2.contains(p))
+    val convexHullPoints2: Vector[Point] = convexHull.flatMap(_.vertices).distinct
+    val innerPoints2: Vector[Point] = randomCirclePoints.filter((p: Point) => !convexHullPoints2.contains(p))
 
 
     println("Convex hull points =================================================")
@@ -329,8 +330,8 @@ object QuickHullTest extends App {
 
   DebugPrinter.shouldPrint = false
 
-  val oneDimPoints: Vector[Vector[Double]] = (0 until 10).map(_ => Vector(random() * 2.0 - 1.0)).toVector
-  val parabolicPoints = oneDimPoints.map(p => p ++ Vector(p.head * p.head))
+  val oneDimPoints: Vector[Point] = (0 until 10).map(_ => Vector(random() * 2.0 - 1.0)).toVector.map(Point)
+  val parabolicPoints = oneDimPoints.map(p => Point(p.coordinates ++ Vector(p.head * p.head)))
 
   val hullSimplices: Vector[Simplex] = QuickHullUtil.getConvexHull(parabolicPoints)
 
@@ -339,8 +340,8 @@ object QuickHullTest extends App {
   )
 
   hullSimplices.foreach((s: Simplex) => {
-    val startPoint: Vector[Double] = s.vertices(0)
-    val endPoint: Vector[Double] = s.vertices(1)
+    val startPoint: Point = s.vertices(0)
+    val endPoint: Point = s.vertices(1)
 
     val x0: Double = startPoint(0)
     val y0: Double = startPoint(1)
@@ -372,19 +373,19 @@ object QuickHullTest extends App {
 
 
 object QuickHullTest2 extends App {
-  val points: Vector[Vector[Double]] = (1 to 100).map(_ => Vector(random(), random(), random())).toVector
+  val points: Vector[Point] = (1 to 100).map(_ => Vector(random(), random(), random())).toVector.map(Point)
 
   val convexHull: Vector[Simplex] = QuickHullUtil.getConvexHull(points)
 
-  val convexHullVertices: Vector[Vector[Double]] = convexHull.flatMap(_.vertices).distinct
-  val interiorVertices: Vector[Vector[Double]] = points.diff(convexHullVertices)
+  val convexHullVertices: Vector[Point] = convexHull.flatMap(_.vertices).distinct
+  val interiorVertices: Vector[Point] = points.diff(convexHullVertices)
 
 
   val convexHullOfConvexHull: Vector[Simplex] = QuickHullUtil.getConvexHull(convexHullVertices)
-  val ccVertices: Vector[Vector[Double]] = convexHullOfConvexHull.flatMap(_.vertices).distinct
-  val cccVertices: Vector[Vector[Double]] = QuickHullUtil.getConvexHull(ccVertices).flatMap(_.vertices).distinct
-  val ccccVertices: Vector[Vector[Double]] = QuickHullUtil.getConvexHull(cccVertices).flatMap(_.vertices).distinct
-  val cccccVertices: Vector[Vector[Double]] = QuickHullUtil.getConvexHull(ccccVertices).flatMap(_.vertices).distinct
+  val ccVertices: Vector[Point] = convexHullOfConvexHull.flatMap(_.vertices).distinct
+  val cccVertices: Vector[Point] = QuickHullUtil.getConvexHull(ccVertices).flatMap(_.vertices).distinct
+  val ccccVertices: Vector[Point] = QuickHullUtil.getConvexHull(cccVertices).flatMap(_.vertices).distinct
+  val cccccVertices: Vector[Point] = QuickHullUtil.getConvexHull(ccccVertices).flatMap(_.vertices).distinct
 
   println("Number of points in convex hull: " + convexHullVertices.length)
   println("Number of points in convex hull of convex hull: " + ccVertices.length)

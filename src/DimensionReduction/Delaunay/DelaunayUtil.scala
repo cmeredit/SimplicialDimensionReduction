@@ -1,5 +1,7 @@
 package DimensionReduction.Delaunay
 
+import DimensionReduction.Point
+
 import scala.math.random
 
 /** Provides functions to compute the Delaunay simplicialization of a collection of points of uniform dimension.
@@ -22,25 +24,25 @@ object DelaunayUtil {
    *  the convex hull of the lift, and then projects this hull back to the original space.
    *
    *  In theory, the expected running time of this algorithm is O(n log(n)), but because I've incorporated some slow
-   *  extra algorithms (e.g., naiive Gaussian elimination), the running time is probably worse.
+   *  extra algorithms (e.g., naive Gaussian elimination), the running time is probably worse.
    *
    * @param points The points to be represented
    * @return The Delaunay simplicialization of the supplied points.
    */
-  def getDelaunaySimplicialization(points: Vector[Vector[Double]]): Vector[Simplex] = {
+  def getDelaunaySimplicialization(points: Vector[Point]): Vector[Simplex] = {
 
     assert(points.nonEmpty)
     assert(points.head.nonEmpty)
-    assert(points.distinctBy(_.length).length == 1)
+    assert(points.distinctBy(_.dimension).length == 1)
 
-    val dimension = points.head.length
+    val dimension = points.head.dimension
 
-    val maximumMagnitudeSquared: Double = points.map((p: Vector[Double]) => p.zip(p).map({case (a, b) => a*b}).sum).max
-    val veryLowVector: Vector[Double] = Vector.fill(dimension)(0.0) ++ Vector(-1.0 * maximumMagnitudeSquared - 1.0)
+    val maximumMagnitudeSquared: Double = points.map((p: Point) => p.zip(p).map({case (a, b) => a*b}).sum).max
+    val veryLowVector: Point = Point(Vector.fill(dimension)(0.0) ++ Vector(-1.0 * maximumMagnitudeSquared - 1.0))
 //    println(veryLowVector)
 
     // Lift points to higher dim
-    val liftedPoints: Vector[Vector[Double]] = points.map(p => p ++ Vector(p.zip(p).map({case (a, b) => a * b * 0.0001}).sum))
+    val liftedPoints: Vector[Point] = points.map(p => Point(p.coordinates ++ Vector(p.zip(p).map({case (a, b) => a * b * 0.0001}).sum)))
 
     val convexHullOfLift: Vector[Simplex] = {
 
@@ -82,16 +84,16 @@ object DelaunayUtil {
 
     val projectionOfLowerEnvelope: Vector[Simplex] = lowerEnvelopeOfLiftedHull.flatMap((simplex: Simplex) => {
 
-      val trueVertices: Vector[Vector[Double]] = simplex.vertices.map(_.reverse.tail.reverse)
+      val trueVertices: Vector[Point] = simplex.vertices.map(p => Point(p.coordinates.reverse.tail.reverse))
 
 //      println("True vertices:")
 //      println(trueVertices)
 //      println("Num true vertices:")
 //      println(trueVertices.length)
 
-      trueVertices.combinations(simplex.vertices.length - 1).map((smallSubsetOfVertices: Vector[Vector[Double]]) => {
-        val absDist: Vector[Double] => Double = (v: Vector[Double]) => scala.math.abs(LinearUtil.getSignedDistAndNormalToHyperplane(smallSubsetOfVertices)._1(v))
-        val normal: Vector[Double] = LinearUtil.getSignedDistAndNormalToHyperplane(smallSubsetOfVertices)._2
+      trueVertices.combinations(simplex.vertices.length - 1).map((smallSubsetOfVertices: Vector[Point]) => {
+        val absDist: Point => Double = (v: Point) => scala.math.abs(LinearUtil.getSignedDistAndNormalToHyperplane(smallSubsetOfVertices)._1(v))
+        val normal: Point = LinearUtil.getSignedDistAndNormalToHyperplane(smallSubsetOfVertices)._2
 
         Simplex(smallSubsetOfVertices, absDist, normal)
       }).distinctBy(_.vertices.toSet)
@@ -108,9 +110,9 @@ object DelaunayTest extends App {
 
   QuickHullUtil.DebugPrinter.shouldPrint = false
 
-  val myPoints: Vector[Vector[Double]] = (0 until 100).map(_ => Vector(random(), random())).toVector
+  val myPoints: Vector[Point] = (0 until 100).map(_ => Vector(random(), random())).toVector.map(Point)
 
-  myPoints foreach {case Vector(x, y) => println("(" + x + ", " + y + ")")}
+  myPoints foreach {case Point(Vector(x, y)) => println("(" + x + ", " + y + ")")}
 
   val triangulation: Vector[Simplex] = DelaunayUtil.getDelaunaySimplicialization(myPoints)
 

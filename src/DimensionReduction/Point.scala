@@ -10,19 +10,28 @@ import scala.math.sqrt
  *
  *  @param coordinates The coordinates of the point.
  */
-class Point(val coordinates: Vector[Double]) {
+case class Point(coordinates: Vector[Double]) {
   /** The dimension of the point. Equal to the length of the coordinates vector. */
   val dimension: Int = coordinates.length
+
+  def apply(i: Int): Double = coordinates(i)
+  def head: Double = coordinates.head
+  def zip(other: Point): Vector[(Double, Double)] = coordinates.zip(other.coordinates)
+  def zipWithIndex: Vector[(Double, Int)] = coordinates.zipWithIndex
+  def map[B](op: Double => B): Vector[B] = coordinates.map(op)
+  def nonEmpty: Boolean = coordinates.nonEmpty
+  def find(p: Double => Boolean): Option[Double] = coordinates.find(p)
+  def indices: Range = coordinates.indices
 
   private def applyCoordinatewise(other: Point)(op: (Double, Double) => Double): Option[Point] =
     if (dimension == other.dimension) {
       Some(
-        new Point(coordinates.zip(other.coordinates).map(p => op(p._1, p._2)))
+        Point(coordinates.zip(other.coordinates).map(p => op(p._1, p._2)))
       )
     } else {
       None
     }
-  private def applyCoordinatewise(op: Double => Double): Point = new Point(coordinates.map(op))
+  private def applyCoordinatewise(op: Double => Double): Point = Point(coordinates.map(op))
 
   /** (Optionally) Returns the vector sum of this with other */
   def +(other: Point): Option[Point] = applyCoordinatewise(other)(_ + _)
