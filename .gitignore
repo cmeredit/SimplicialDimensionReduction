@@ -17,6 +17,7 @@ project/plugins/project/
 lwjgl-release-3.2.3-custom.zip
 LWJGLTest.iml
 lwjgl-release-3.2.3-custom/
+SimplicialDimensionReduction.iml
 
 ### Scala ###
 *.class

@@ -1,8 +1,9 @@
-package GUIMain
+package Main
 
 //import ScalaComp.Main
-import ScalaComp.Delaunay.{QuickHullUtil, Simplex}
-import ScalaComp.LinearUtil
+import DataLoaders.IrisLoader
+import DimensionReduction.Delaunay.{LinearUtil, QuickHullUtil, Simplex}
+import DimensionReduction.Point
 import org.joml.Matrix4f
 import org.lwjgl._
 import org.lwjgl.glfw.Callbacks._
@@ -44,7 +45,7 @@ class Main {
   private var firstMouse: Boolean = true
 
 
-  private lazy val iris: (Vector[Vector[Float]], Vector[Vector[Float]]) = ScalaComp.Main.getIrisData
+  private lazy val iris: (Vector[Vector[Float]], Vector[Vector[Float]]) = IrisLoader.getIrisData
 
 
 
@@ -60,9 +61,9 @@ class Main {
   private lazy val hdv: HighDimViewer = whatToLoad match {
     case ShouldLoadIris => new HighDimViewer((0,0), (10,10), iris._1, iris._2)
     case ShouldLoadRandom3dHull =>
-      val points: Vector[Vector[Double]] = (1 to num3dPointsToHull).map(_ => Vector(random(), random(), random())).toVector
+      val points: Vector[Point] = (1 to num3dPointsToHull).map(_ => Vector(random(), random(), random())).toVector.map(Point)
 
-      var currentPoints: Vector[Vector[Double]] = points
+      var currentPoints: Vector[Point] = points
       var previousNumPoints: Int = currentPoints.length
       var currentHull: Vector[Simplex] = QuickHullUtil.getConvexHull(currentPoints)
       var currentNumPoints: Int = currentPoints.length
@@ -80,7 +81,7 @@ class Main {
 
       val convexHull: Vector[Simplex] = currentHull
 
-      val convexHullVertices: Vector[Vector[Double]] = convexHull.flatMap(_.vertices)
+      val convexHullVertices: Vector[Point] = convexHull.flatMap(_.vertices)
       val interiorVertices: Vector[Vector[Float]] = points.diff(convexHullVertices).map(_.map(_.toFloat))
 
       val floatVertexInfo: Vector[Vector[Float]] = convexHullVertices.map(_.map(_.toFloat)) ++ interiorVertices
@@ -89,7 +90,7 @@ class Main {
 
       new HighDimViewer((0,0), (10, 10), floatVertexInfo, floatColorInfo)
     case ShouldLoadRandom3dSphere =>
-      val points: Vector[Vector[Double]] = (1 to num3dPointsToHull).map(_ => {
+      val points: Vector[Point] = (1 to num3dPointsToHull).map(_ => {
 
         val theta: Double = random() * 2.0 * scala.math.Pi
         val phi: Double = random() * scala.math.Pi
@@ -103,11 +104,11 @@ class Main {
         val y: Double = r * scala.math.sin(theta) //random() * 2.0 - 1.0
         Vector(x, x*x + y*y, y)
 
-      }).toVector
+      }).toVector.map(Point)
 
       val convexHull: Vector[Simplex] = QuickHullUtil.getConvexHull(points)
 
-      val convexHullVertices: Vector[Vector[Double]] = convexHull.flatMap(_.vertices)
+      val convexHullVertices: Vector[Point] = convexHull.flatMap(_.vertices)
       val interiorVertices: Vector[Vector[Float]] = points.diff(convexHullVertices).map(_.map(_.toFloat))
 
       val numPerNormal: Int = 40
@@ -119,7 +120,7 @@ class Main {
       val floatVertexInfo: Vector[Vector[Float]] = convexHullVertices.map(_.map(_.toFloat)) ++
         interiorVertices ++
         convexHull.flatMap((s: Simplex) => {
-        val centroid = s.vertices.transpose.map(_.sum / 3.0)
+        val centroid: Point = Point(s.vertices.map(_.coordinates).transpose.map(_.sum / 3.0))
         centroid.zip(s.normalVector).map({case (a, b) => (a+b).toFloat})
         centroid.map(_.toFloat)
 
@@ -152,7 +153,7 @@ class Main {
 
 
 
-//      points.foreach((v: Vector[Double]) => {
+//      points.foreach((v: Point) => {
 //        println("Minimum distance to a simplex in the convex hull " + convexHull.map(_.signedDistance(v)).max)
 //      })
 
@@ -176,17 +177,17 @@ class Main {
       val floatVertexInfo: Vector[Vector[Float]] = pointAngles.map({case (phi, theta) => Vector(scala.math.sin(phi) * scala.math.cos(theta), scala.math.sin(phi) * scala.math.sin(theta), scala.math.cos(phi)).map(_.toFloat)}) ++
         pointAngles.flatMap({ case (phi, theta) =>
 
-          def sphereCoord: (Double, Double) => Vector[Double] = {case (p, t) =>
-            Vector(scala.math.sin(p) * scala.math.cos(t), scala.math.sin(p) * scala.math.sin(t), scala.math.cos(p))
+          def sphereCoord: (Double, Double) => Point = {case (p, t) =>
+            Point(Vector(scala.math.sin(p) * scala.math.cos(t), scala.math.sin(p) * scala.math.sin(t), scala.math.cos(p)))
           }
 
-          val basePoint: Vector[Double] = sphereCoord(phi, theta)
+          val basePoint: Point = sphereCoord(phi, theta)
 
           val simplexVertices = Vector(sphereCoord(phi + 0.025, theta), sphereCoord(phi - 0.025, theta - 0.05), sphereCoord(phi - 0.025, theta + 0.05))
 
-          val (dist, normalGuess): (Vector[Double] => Double, Vector[Double]) = LinearUtil.getSignedDistanceFunctionToHyperplane(simplexVertices)
+          val (dist, normalGuess): (Point => Double, Point) = LinearUtil.getSignedDistAndNormalToHyperplane(simplexVertices)
 
-          val normal: Vector[Double] = if (dist(Vector(0.0, 0.0, 0.0)) <= 0.0) normalGuess else normalGuess.map(_ * -1.0)
+          val normal: Point = if (dist(Point(Vector(0.0, 0.0, 0.0))) <= 0.0) normalGuess else normalGuess * -1.0
 
           val dp: Double = normal.zip(basePoint).map({case (a, b) => a * b}).sum
 
@@ -195,7 +196,7 @@ class Main {
             println("Uh oh! Our normal vector is fucked!")
             println("Dot product: " + dp)
             println("Calculated normal vector: (" + normal.map(_.toString).reduce(_ + ", " + _) + ")")
-            println("Points on the plane: " + simplexVertices.map((p: Vector[Double]) => "(" + p.map(_.toString).reduce(_ + ", " + _) + ")").reduce(_ + " | " + _))
+            println("Points on the plane: " + simplexVertices.map((p: Point) => "(" + p.map(_.toString).reduce(_ + ", " + _) + ")").reduce(_ + " | " + _))
           }
 
 
@@ -267,7 +268,7 @@ class Main {
 
 
       // Get the thread stack and push a new frame
-      try {
+      {
         val stack = stackPush
         try {
           val pWidth = stack.mallocInt(1) // int*
@@ -417,7 +418,7 @@ class Main {
 
 
     val FLOAT_SIZE: Int = 4
-    val m: Mesh = new Mesh(vertices, Vector(Attribute(0, 3, 6 * FLOAT_SIZE, 0), Attribute(1, 3, 6 * FLOAT_SIZE, 3*FLOAT_SIZE)), indices,
+    val m: Mesh = new Mesh(vertices, Vector(GLAttribute(0, 3, 6 * FLOAT_SIZE, 0), GLAttribute(1, 3, 6 * FLOAT_SIZE, 3*FLOAT_SIZE)), indices,
       "Shaders/SH1/test.vs", "Shaders/SH1/test.fs")
     m.rotate(Math.toRadians(45.0).toFloat, 0.0f, 0.0f, 1.0f)
 
