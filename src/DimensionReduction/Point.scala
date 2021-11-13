@@ -2,15 +2,13 @@ package DimensionReduction
 
 import scala.math.sqrt
 
-class Point(val coordinates: List[Double]) {
+class Point(val coordinates: Vector[Double]) {
   val dimension: Int = coordinates.length
 
   private def applyCoordinatewise(other: Point)(op: (Double, Double) => Double): Option[Point] =
     if (dimension == other.dimension) {
       Some(
-        new Point(
-          coordinates.zip(other.coordinates).map(p => op(p._1, p._2))
-        )
+        new Point(coordinates.zip(other.coordinates).map(p => op(p._1, p._2)))
       )
     } else {
       None
