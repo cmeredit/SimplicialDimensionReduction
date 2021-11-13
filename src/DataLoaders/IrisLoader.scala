@@ -6,8 +6,16 @@ import scala.io.{BufferedSource, Source}
 
 class IrisDatum(override val coordinates: List[Double], val name: String) extends Point(coordinates)
 
+/**
+ * Utility object for loading the iris dataset.
+ */
 object IrisLoader {
 
+  /**
+   * Returns the Iris dataset formatted as a Vector of points and a Vector of colors
+   *
+   * @return The Iris dataset
+   */
   def getIrisData: (Vector[Vector[Float]], Vector[Vector[Float]]) = {
     val bufferedIrisSource: BufferedSource = Source.fromFile("Datasets/iris.data")
     val irisData: Vector[IrisDatum] = bufferedIrisSource.getLines().map(line => {
@@ -18,12 +26,14 @@ object IrisLoader {
     }).toVector.distinctBy(_.coordinates)
     bufferedIrisSource.close()
 
-    irisData.map(p => (p.coordinates.toVector.map(_.toFloat), p.name match {
+    val nameToColor: String => Vector[Float] = {
       case "Iris-setosa" => Vector(1.0f, 0.0f, 0.0f)
       case "Iris-versicolor" => Vector(0.0f, 1.0f, 0.0f)
       case "Iris-virginica" => Vector(0.0f, 0.0f, 1.0f)
       case _ => Vector(0.0f, 0.0f, 0.0f)
-    })).unzip
+    }
+
+    irisData.map(p => (p.coordinates.toVector.map(_.toFloat), nameToColor(p.name))).unzip
   }
 
 }
