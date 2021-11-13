@@ -1,6 +1,6 @@
 package DimensionReduction.Delaunay
 
-/** Provides several Linear Algebra functions
+/** Provides several Linear Algebra functions, such as getting the RREF of a matrix.
  *
  */
 object LinearUtil {
