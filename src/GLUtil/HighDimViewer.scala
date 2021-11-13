@@ -52,9 +52,9 @@ class HighDimViewer(val position: (Int, Int), val size: (Int, Int),
 //    println(data.mkString(", "))
 //    println(indices.mkString(", "))
 
-    val position: Attribute = Attribute(0, 3, 9 * FLOAT_SIZE, 0)
-    val color: Attribute = Attribute(1, 3, 9 * FLOAT_SIZE, 3 * FLOAT_SIZE)
-    val normal: Attribute = Attribute(2, 3, 9 * FLOAT_SIZE, 6 * FLOAT_SIZE)
+    val position: GLAttribute = GLAttribute(0, 3, 9 * FLOAT_SIZE, 0)
+    val color: GLAttribute = GLAttribute(1, 3, 9 * FLOAT_SIZE, 3 * FLOAT_SIZE)
+    val normal: GLAttribute = GLAttribute(2, 3, 9 * FLOAT_SIZE, 6 * FLOAT_SIZE)
 
     ((i1, i2, i3), new Mesh(data, Vector(position, color, normal), indices,
       "Shaders/SH1/test.vs", "Shaders/SH1/test.fs"))

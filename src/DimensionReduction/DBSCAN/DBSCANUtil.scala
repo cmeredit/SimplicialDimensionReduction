@@ -1,4 +1,6 @@
-package ScalaComp
+package DimensionReduction.DBSCAN
+
+import DimensionReduction.Point
 
 sealed trait ClusterType
 case object Core extends ClusterType
@@ -25,7 +27,7 @@ class DBPoint(c: List[Double], val neighbors: List[DBPoint], val clusterType: Op
     ")"
 }
 
-object DBCluster {
+object DBSCANUtil {
 
   def cluster(epsilon: Double, minPoints: Int)(points: List[Point]): List[DBPoint] = {
     // TODO: Remove stupid repeated neighborhood computation - cache this somewhere
@@ -47,14 +49,13 @@ object DBCluster {
     val pointsWithValidClusters: List[DBPoint] = pointsWithValidCore.map(p => {
       val clusterType: Option[ClusterType] = p.clusterType match {
         case Some(value) => Some(value)
-        case None => {
+        case None =>
           val hasCoreNeighbor: Boolean = pointsWithValidCore.filter(_ != p).filter(_.distSquared(p) match {
             case Some(d) => d <= epsilonSquared
             case None => false
           }).exists(_.clusterType.contains(Core))
 
           if (hasCoreNeighbor) Some(Boundary) else Some(Outlier)
-        }
       }
 
       new DBPoint(p.coordinates, List(), clusterType)

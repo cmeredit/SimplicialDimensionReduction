@@ -1,8 +1,8 @@
-package GUIMain
+package Main
 
 //import ScalaComp.Main
-import ScalaComp.Delaunay.{QuickHullUtil, Simplex}
-import ScalaComp.LinearUtil
+import DataLoaders.IrisLoader
+import DimensionReduction.Delaunay.{LinearUtil, QuickHullUtil, Simplex}
 import org.joml.Matrix4f
 import org.lwjgl._
 import org.lwjgl.glfw.Callbacks._
@@ -44,7 +44,7 @@ class Main {
   private var firstMouse: Boolean = true
 
 
-  private lazy val iris: (Vector[Vector[Float]], Vector[Vector[Float]]) = ScalaComp.Main.getIrisData
+  private lazy val iris: (Vector[Vector[Float]], Vector[Vector[Float]]) = IrisLoader.getIrisData
 
 
 
@@ -417,7 +417,7 @@ class Main {
 
 
     val FLOAT_SIZE: Int = 4
-    val m: Mesh = new Mesh(vertices, Vector(Attribute(0, 3, 6 * FLOAT_SIZE, 0), Attribute(1, 3, 6 * FLOAT_SIZE, 3*FLOAT_SIZE)), indices,
+    val m: Mesh = new Mesh(vertices, Vector(GLAttribute(0, 3, 6 * FLOAT_SIZE, 0), GLAttribute(1, 3, 6 * FLOAT_SIZE, 3*FLOAT_SIZE)), indices,
       "Shaders/SH1/test.vs", "Shaders/SH1/test.fs")
     m.rotate(Math.toRadians(45.0).toFloat, 0.0f, 0.0f, 1.0f)
 

@@ -1,7 +1,6 @@
-package ScalaComp.Delaunay
+package DimensionReduction.Delaunay
 
-import ScalaComp.Delaunay.QuickHullUtil.DebugPrinter
-import ScalaComp.LinearUtil
+import DimensionReduction.Delaunay.QuickHullUtil.DebugPrinter
 
 import scala.math.{cos, random, sin}
 import scala.util.Random
@@ -272,56 +271,54 @@ object QuickHullUtil {
     }
 
     verticesToProcess.zipWithIndex.foreach({case (currentVertex: Vector[Double], index: Int) =>
-    {
 
-//      println("Working on vertex " + index + " out of " + verticesToProcess.length)
+      //      println("Working on vertex " + index + " out of " + verticesToProcess.length)
 
       ConflictGraph.processPoint(currentVertex)
 
-//      DebugPrinter.print("Checking if we need to process this point.")
-//      val needToProcess = !ConflictGraph.pointIsInConvexHull(currentVertex)
-//
-//      if (needToProcess) DebugPrinter.print("We do need to process this point.") else DebugPrinter.print("Skipping this point")
-//
-//      if (needToProcess) {
-//
-//
-//        DebugPrinter.print("Going to process " + currentVertex.toString())
-//        DebugPrinter.print("Conflict graph at beginning of stage")
-//        ConflictGraph.print()
-//
-//        DebugPrinter.print("")
-//        DebugPrinter.print("Finding conflicts")
-//        val conflicts: Vector[Simplex] = ConflictGraph.getConflictingSimplices(currentVertex)
-////        ConflictGraph.deleteConflicts(currentVertex)
-//        ConflictGraph.deleteSimplices(conflicts)
-//
-//        DebugPrinter.print("Finding ridges")
-//        val ridges: Vector[(Simplex, Simplex)] = ConflictGraph.getRidges(conflicts)
-//
-//        DebugPrinter.print("Number of ridges:")
-//        DebugPrinter.print(ridges.length)
-//        DebugPrinter.print("Found " + ridges.length + " ridges")
-//
-////        DebugPrinter.print("Finding horizon points")
-////        val allHorizonPoints: Vector[Vector[Double]] = ridges.flatMap({case (s1, s2) => s1.vertices.intersect(s2.vertices)})
-//
-//        DebugPrinter.print("Adding new facets based on ridges")
-//        ridges.foreach {case (visibleSimplex, invisibleSimplex) =>
-//          val intersectionPoints: Vector[Vector[Double]] = visibleSimplex.vertices.intersect(invisibleSimplex.vertices)
-//
-//          val newFacet: Simplex = ConflictGraph.createFacet(intersectionPoints, currentVertex)
-//
-//          ConflictGraph.addFacet(newFacet, (visibleSimplex, invisibleSimplex))
-//        }
-//
-//        DebugPrinter.print("Conflict graph at end of stage:")
-//        ConflictGraph.print()
-//
-//      }
-//
-////      ConflictGraph.removeVertex(currentVertex)
-    }
+      //      DebugPrinter.print("Checking if we need to process this point.")
+      //      val needToProcess = !ConflictGraph.pointIsInConvexHull(currentVertex)
+      //
+      //      if (needToProcess) DebugPrinter.print("We do need to process this point.") else DebugPrinter.print("Skipping this point")
+      //
+      //      if (needToProcess) {
+      //
+      //
+      //        DebugPrinter.print("Going to process " + currentVertex.toString())
+      //        DebugPrinter.print("Conflict graph at beginning of stage")
+      //        ConflictGraph.print()
+      //
+      //        DebugPrinter.print("")
+      //        DebugPrinter.print("Finding conflicts")
+      //        val conflicts: Vector[Simplex] = ConflictGraph.getConflictingSimplices(currentVertex)
+      ////        ConflictGraph.deleteConflicts(currentVertex)
+      //        ConflictGraph.deleteSimplices(conflicts)
+      //
+      //        DebugPrinter.print("Finding ridges")
+      //        val ridges: Vector[(Simplex, Simplex)] = ConflictGraph.getRidges(conflicts)
+      //
+      //        DebugPrinter.print("Number of ridges:")
+      //        DebugPrinter.print(ridges.length)
+      //        DebugPrinter.print("Found " + ridges.length + " ridges")
+      //
+      ////        DebugPrinter.print("Finding horizon points")
+      ////        val allHorizonPoints: Vector[Vector[Double]] = ridges.flatMap({case (s1, s2) => s1.vertices.intersect(s2.vertices)})
+      //
+      //        DebugPrinter.print("Adding new facets based on ridges")
+      //        ridges.foreach {case (visibleSimplex, invisibleSimplex) =>
+      //          val intersectionPoints: Vector[Vector[Double]] = visibleSimplex.vertices.intersect(invisibleSimplex.vertices)
+      //
+      //          val newFacet: Simplex = ConflictGraph.createFacet(intersectionPoints, currentVertex)
+      //
+      //          ConflictGraph.addFacet(newFacet, (visibleSimplex, invisibleSimplex))
+      //        }
+      //
+      //        DebugPrinter.print("Conflict graph at end of stage:")
+      //        ConflictGraph.print()
+      //
+      //      }
+      //
+      ////      ConflictGraph.removeVertex(currentVertex)
 
 
     })

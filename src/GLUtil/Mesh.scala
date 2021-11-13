@@ -10,9 +10,9 @@ import org.lwjgl.system.MemoryUtil
 import java.nio.{FloatBuffer, IntBuffer}
 import scala.io.{BufferedSource, Source}
 
-case class Attribute(shaderLocation: Int, size: Int, stride: Int, offset: Int)
 
-class Mesh(data: Array[Float], attributes: Vector[Attribute], indices: Array[Int],
+
+class Mesh(data: Array[Float], attributes: Vector[GLAttribute], indices: Array[Int],
            vertexShaderSource: String, fragmentShaderSource: String) {
 
   // Helper for passing our data to openGL
@@ -104,7 +104,7 @@ class Mesh(data: Array[Float], attributes: Vector[Attribute], indices: Array[Int
   GL20.glDeleteShader(vertexShader)
   GL20.glDeleteShader(fragmentShader)
 
-  private val modelMatrix: Matrix4f = (new Matrix4f()).identity()
+  private val modelMatrix: Matrix4f = new Matrix4f().identity()
   private val modelFloatBuffer: FloatBuffer = MemoryUtil.memAllocFloat(16)
 
   def rotate(radians: Float, axisX: Float, axisY: Float, axisZ: Float): Unit = {

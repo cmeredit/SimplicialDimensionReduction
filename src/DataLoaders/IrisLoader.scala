@@ -1,20 +1,12 @@
-package ScalaComp
+package DataLoaders
+
+import DimensionReduction.Point
 
 import scala.io.{BufferedSource, Source}
 
 class IrisDatum(override val coordinates: List[Double], val name: String) extends Point(coordinates)
 
-object Main {
-
-  def run(): Unit = {
-    val points: List[Point] = List(
-      List(0.0),
-      List(1.0),
-      List(1.5),
-      List(2.0)
-    ).map(new Point(_))
-    DBCluster.cluster(1.0, 2)(points) foreach println
-  }
+object IrisLoader {
 
   def getIrisData: (Vector[Vector[Float]], Vector[Vector[Float]]) = {
     val bufferedIrisSource: BufferedSource = Source.fromFile("Datasets/iris.data")

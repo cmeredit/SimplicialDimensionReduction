@@ -1,6 +1,4 @@
-package ScalaComp.Delaunay
-
-import ScalaComp.LinearUtil
+package DimensionReduction.Delaunay
 
 import scala.math.random
 

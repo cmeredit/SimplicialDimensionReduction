@@ -1,4 +1,4 @@
-package ScalaComp
+package DimensionReduction.Delaunay
 
 object LinearUtil {
   // Assume: "points" all lie on some hyperplane
