@@ -2,8 +2,31 @@ package DimensionReduction.Delaunay
 
 import scala.math.random
 
+/** Provides functions to compute the Delaunay simplicialization of a collection of points of uniform dimension.
+ *
+ *  In two dimensions, the Delaunay simplicialization is the usual Delaunay triangulation. I.e., a triangulation of the
+ *  points such that no circumcircle of any triangle contains another point in its interior.
+ *
+ *  In three dimensions, the Delaunay simplicialization of a set of points is a collection of tetrahedra such that no
+ *  circumsphere of any tetrahedron contains another point in its interior.
+ *
+ *  In n dimensions, the Delaunay simplicialization of a set of points is a collection of n-simplices such that no
+ *  circumhypersphere of any n-simplex contains another point in its interior.
+ *
+ */
 object DelaunayUtil {
 
+  /** Computes the Delaunay simplicialization of a set of points.
+   *
+   *  The currently implementation of this code computes a lift of the points to the unit hyperparaboloid, computes
+   *  the convex hull of the lift, and then projects this hull back to the original space.
+   *
+   *  In theory, the expected running time of this algorithm is O(n log(n)), but because I've incorporated some slow
+   *  extra algorithms (e.g., naiive Gaussian elimination), the running time is probably worse.
+   *
+   * @param points The points to be represented
+   * @return The Delaunay simplicialization of the supplied points.
+   */
   def getDelaunaySimplicialization(points: Vector[Vector[Double]]): Vector[Simplex] = {
 
     assert(points.nonEmpty)
