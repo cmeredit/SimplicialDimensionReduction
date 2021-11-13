@@ -5,9 +5,10 @@ import DimensionReduction.Delaunay.QuickHullUtil.DebugPrinter
 import scala.math.{cos, random, sin}
 import scala.util.Random
 
+/** Provides functions that implement the QuickHull algorithm using a randomized incremental approach. */
 object QuickHullUtil {
 
-
+  /** Handles debug printing. */
   object DebugPrinter {
 
     // By default, don't print anything
@@ -16,6 +17,12 @@ object QuickHullUtil {
     def print(s: Any): Unit = if (shouldPrint) println(s)
   }
 
+  /** Computes the convex hull of the supplied points using a randomized incremental approach.
+   *
+   *  @see https://www.youtube.com/watch?v=tBE7PfKupZo
+   *  @param points The collection of points whose convex hull is to be computed.
+   *  @return The convex hull represented as a collection of simplices.
+   */
   def getConvexHull(points: Vector[Vector[Double]]): Vector[Simplex] = {
 
     // Note: This function is referentially transparent despite the use of random initialization and imperative components
@@ -175,35 +182,6 @@ object QuickHullUtil {
         newFacet
       }
 
-//      def addFacet(facet: Simplex, ridge: (Simplex, Simplex)): Unit = {
-//
-//        simplices = simplices ++ Vector(facet)
-//
-//        val candidateConflicts: Vector[Vector[Double]] = ConflictGraph.getConflictingVertices(ridge._1) ++ ConflictGraph.getConflictingVertices(ridge._2)
-//
-//        DebugPrinter.print("Adding facet: " + facet.vertices)
-//        DebugPrinter.print("Based on ridge: " + ridge._1.vertices + " ^v^v^v^ " + ridge._2.vertices)
-//
-//        candidateConflicts.foreach((candidate: Vector[Double]) => {
-//
-//          DebugPrinter.print("Candidate conflict: " + candidate)
-//          DebugPrinter.print("Candidate distance: " + facet.signedDistance(candidate))
-//
-//          // test if this candidate actually conflicts with the new facet
-//          if (facet.signedDistance(candidate) >= 0.0) {
-//            DebugPrinter.print("Candidate truly is a conflict")
-//            ConflictGraph.addConflict(candidate, facet)
-//          } else {
-//            DebugPrinter.print("Rejected candidate")
-//          }
-//
-//        })
-//      }
-
-
-
-
-
       def processPoint(pointToProcess: Vector[Double]): Unit = {if (edges.contains(pointToProcess)) {
 
 //        println("Convex hull currently contains " + simplices.length + " simplices")
@@ -233,10 +211,6 @@ object QuickHullUtil {
         simplices = simplices.diff(conflicts)
 
       }}
-
-
-
-
 
       def getSimplices: Vector[Simplex] = simplices
 
@@ -276,203 +250,12 @@ object QuickHullUtil {
 
       ConflictGraph.processPoint(currentVertex)
 
-      //      DebugPrinter.print("Checking if we need to process this point.")
-      //      val needToProcess = !ConflictGraph.pointIsInConvexHull(currentVertex)
-      //
-      //      if (needToProcess) DebugPrinter.print("We do need to process this point.") else DebugPrinter.print("Skipping this point")
-      //
-      //      if (needToProcess) {
-      //
-      //
-      //        DebugPrinter.print("Going to process " + currentVertex.toString())
-      //        DebugPrinter.print("Conflict graph at beginning of stage")
-      //        ConflictGraph.print()
-      //
-      //        DebugPrinter.print("")
-      //        DebugPrinter.print("Finding conflicts")
-      //        val conflicts: Vector[Simplex] = ConflictGraph.getConflictingSimplices(currentVertex)
-      ////        ConflictGraph.deleteConflicts(currentVertex)
-      //        ConflictGraph.deleteSimplices(conflicts)
-      //
-      //        DebugPrinter.print("Finding ridges")
-      //        val ridges: Vector[(Simplex, Simplex)] = ConflictGraph.getRidges(conflicts)
-      //
-      //        DebugPrinter.print("Number of ridges:")
-      //        DebugPrinter.print(ridges.length)
-      //        DebugPrinter.print("Found " + ridges.length + " ridges")
-      //
-      ////        DebugPrinter.print("Finding horizon points")
-      ////        val allHorizonPoints: Vector[Vector[Double]] = ridges.flatMap({case (s1, s2) => s1.vertices.intersect(s2.vertices)})
-      //
-      //        DebugPrinter.print("Adding new facets based on ridges")
-      //        ridges.foreach {case (visibleSimplex, invisibleSimplex) =>
-      //          val intersectionPoints: Vector[Vector[Double]] = visibleSimplex.vertices.intersect(invisibleSimplex.vertices)
-      //
-      //          val newFacet: Simplex = ConflictGraph.createFacet(intersectionPoints, currentVertex)
-      //
-      //          ConflictGraph.addFacet(newFacet, (visibleSimplex, invisibleSimplex))
-      //        }
-      //
-      //        DebugPrinter.print("Conflict graph at end of stage:")
-      //        ConflictGraph.print()
-      //
-      //      }
-      //
-      ////      ConflictGraph.removeVertex(currentVertex)
-
-
     })
 
     DebugPrinter.print("Done processing vertices")
 
     ConflictGraph.print()
 
-//    // If a point is below all of our hull simplices, then it can't be a vertex of the hull. So only keep the points that are above one of the simplices
-//    // we still need to process.
-//    // Below, we'll be a bit more smart about this update step. However, we know we need to compare against *all* simplices to process since we've just
-//    // now initialized them. In the future, we only need to check against new simplices.
-//    undeterminedPoints = points.filter((point: Vector[Double]) => simplicesToProcess.exists((simplex: Simplex) => simplex.signedDistance(point) > 0.0))
-//
-//
-//    while (simplicesToProcess.nonEmpty && undeterminedPoints.nonEmpty) {
-//
-//      DebugPrinter.print("NEXT STAGE ========================================================================================================================================")
-//      DebugPrinter.print("Current hull:")
-//      hullSimplices foreach {simplex => DebugPrinter.print(simplex.vertices)}
-//
-//      DebugPrinter.print("Undetermined points")
-//      undeterminedPoints foreach DebugPrinter.print
-//
-//      DebugPrinter.print("Simplices to process:")
-//      simplicesToProcess foreach {simplex => DebugPrinter.print(simplex.vertices)}
-//
-//
-//      // Pop off a simplex
-//      val nextSimplex: Simplex = simplicesToProcess.head
-//      simplicesToProcess = simplicesToProcess.tail
-//
-//      val allSimplices: Vector[Simplex] = simplicesToProcess ++ hullSimplices ++ Vector(nextSimplex)
-//
-//
-////      DebugPrinter.print("Vertices of this simplex:")
-////      DebugPrinter.print(nextSimplex.vertices)
-//
-////      DebugPrinter.print("Points that are still undetermined:")
-////      DebugPrinter.print(undeterminedPoints)
-//
-//      val farthestPoint: Vector[Double] = undeterminedPoints.maxBy(nextSimplex.signedDistance)
-//      val distanceToFarthestPoint: Double = nextSimplex.signedDistance(farthestPoint)
-//
-//      DebugPrinter.print("Farthest point:")
-//      DebugPrinter.print(farthestPoint)
-//
-//      DebugPrinter.print("Distance to farthest point:")
-//      DebugPrinter.print(distanceToFarthestPoint)
-//
-//
-//
-//      // If there are no points above this simplex, then it must belong to the convex hull. Otherwise, we need to split it into more simplices
-//      // in a similar manner to how we initialized simplicesToProcess. The only differences are...
-//      // ---- We must include the farthestPoint to avoid re-adding the original simplex
-//      // ---- We will update undeterminedPoints only based on these new simplices
-//
-//      // HUGE complication: A new point might be visible to more than one simplex...
-//      if (distanceToFarthestPoint <= 0) {
-//        hullSimplices = hullSimplices.appended(nextSimplex)
-//      } else {
-//
-//        val visibleSimplices: Vector[Simplex] = allSimplices.filter((simplex: Simplex) => simplex.signedDistance(farthestPoint) > 0.0)
-//
-//
-//
-//        DebugPrinter.print("Visible simplices")
-//        visibleSimplices foreach {simplex => DebugPrinter.print(simplex.vertices)}
-//
-//        if (visibleSimplices.length == 1) {
-//          val newSimplices: Vector[Simplex] = for (pointToExclude <- nextSimplex.vertices) yield {
-//            val pointsOfThisSimplex: Vector[Vector[Double]] = nextSimplex.vertices.filter(_ != pointToExclude) ++ Vector(farthestPoint)
-//            val distGuess: Vector[Double] => Double = LinearUtil.getSignedDistanceFunctionToHyperplane(pointsOfThisSimplex)
-//
-//            // We want to ensure that the points "above" this simplex are on the opposite side of the simplex from the excluded point.
-//            // We also want to recognize points "above" this simplex as points with positive signed distance from the simplex.
-//            // Hence, the excluded point should have negative signed distance. If it has positive signed distance, then we need to switch.
-//            val shouldNegateDistanceFunc: Boolean = distGuess(pointToExclude) > 0
-//
-//            Simplex(
-//              pointsOfThisSimplex,
-//              if (shouldNegateDistanceFunc)
-//                (v: Vector[Double]) => -distGuess(v)
-//              else
-//                distGuess
-//            )
-//          }
-//
-//          simplicesToProcess = simplicesToProcess ++ newSimplices
-//          undeterminedPoints = undeterminedPoints.filter((point: Vector[Double]) => newSimplices.exists((simplex: Simplex) => simplex.signedDistance(point) > 0.0))
-//        } else {
-//
-//          val simplicesAreAdjacent: (Simplex, Simplex) => Boolean = {case (s1, s2) =>
-//            s1.vertices.intersect(s2.vertices).length == s1.vertices.length - 1
-//          }
-//
-//
-//          // A ridge is a pair of adjacent simplices where the first element of the pair is visible from a point, but the second element is not
-//          val ridges: Vector[(Simplex, Simplex)] = for (
-//            s1 <- visibleSimplices;
-//            s2 <- allSimplices if (s2.signedDistance(farthestPoint) <= 0.0) && simplicesAreAdjacent(s1, s2)
-//          ) yield (s1, s2)
-//
-////          DebugPrinter.print("ridges:")
-////          ridges foreach {case (s1, s2) =>
-////            DebugPrinter.print(s1.vertices.toString() + "  |  " + s2.vertices.toString())
-////          }
-//
-//          val ridgeIntersections: Vector[Vector[Vector[Double]]] = ridges.map({case (s1, s2) => s1.vertices.intersect(s2.vertices)}).distinct
-//
-//          val horizonPoints = ridgeIntersections.flatten.distinct
-//
-//          DebugPrinter.print("Horizon points:")
-//          DebugPrinter.print(horizonPoints)
-//
-//          val newSimplices: Vector[Simplex] = ridgeIntersections.map((ridgeIntersectionVertices: Vector[Vector[Double]]) => {
-//
-//            val pointsOfThisSimplex: Vector[Vector[Double]] = ridgeIntersectionVertices ++ Vector(farthestPoint)
-//
-////            DebugPrinter.print("Intersection size...")
-////            DebugPrinter.print(ridgeIntersectionVertices.length)
-//
-//            val distGuess: Vector[Double] => Double = LinearUtil.getSignedDistanceFunctionToHyperplane(pointsOfThisSimplex)
-//
-//            val excludedPoint: Vector[Double] = horizonPoints.filter(p => !pointsOfThisSimplex.contains(p)).head
-//
-//            // We want to ensure that the points "above" this simplex are on the opposite side of the simplex from the excluded point.
-//            // We also want to recognize points "above" this simplex as points with positive signed distance from the simplex.
-//            // Hence, the excluded point should have negative signed distance. If it has positive signed distance, then we need to switch.
-//            val shouldNegateDistanceFunc: Boolean = distGuess(excludedPoint) > 0
-//
-//            Simplex(
-//              pointsOfThisSimplex,
-//              if (shouldNegateDistanceFunc)
-//                (v: Vector[Double]) => -distGuess(v)
-//              else
-//                distGuess
-//            )
-//          })
-//
-//          simplicesToProcess = simplicesToProcess.diff(visibleSimplices) ++ newSimplices
-//          undeterminedPoints = undeterminedPoints.filter((point: Vector[Double]) => newSimplices.exists((simplex: Simplex) => simplex.signedDistance(point) > 0.0))
-//
-//        }
-//
-//
-//      }
-//    }
-//
-//    hullSimplices ++ simplicesToProcess
-
-
-
-    // Todo: Figure out why the heck we do this culling step
     ConflictGraph.getSimplices
 
   }
