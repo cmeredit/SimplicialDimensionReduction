@@ -2,31 +2,6 @@ package DimensionReduction.DBSCAN
 
 import DimensionReduction.Point
 
-sealed trait ClusterType
-case object Core extends ClusterType
-case object Boundary extends ClusterType
-case object Outlier extends ClusterType
-
-// ClusterType Option: Some == Determined, None == Undetermined
-class DBPoint(c: List[Double], val neighbors: List[DBPoint], val clusterType: Option[ClusterType]) extends Point(c) {
-  override def toString: String =
-    "DBPoint(" +
-      "Coordinates: " + c.toString() + ", " +
-      "Dimension: " + dimension.toString + ", " +
-      "Neighbors: " + neighbors.map(_.coordinates.toString()) + ", " +
-      "Cluster Type: " + {
-      clusterType match {
-        case Some(value) => value match {
-          case Core => "Core"
-          case Boundary => "Boundary"
-          case Outlier => "Outlier"
-        }
-        case None => "Undetermined"
-      }
-    } +
-    ")"
-}
-
 object DBSCANUtil {
 
   def cluster(epsilon: Double, minPoints: Int)(points: List[Point]): List[DBPoint] = {
