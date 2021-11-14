@@ -29,7 +29,7 @@ object DelaunayUtil {
    * @param points The points to be represented
    * @return The Delaunay simplicialization of the supplied points.
    */
-  def getDelaunaySimplicialization(points: Vector[Point]): Vector[Simplex] = {
+  def getDelaunaySimplicialization(points: Vector[Point]): Vector[PointedAffineSpace] = {
 
     assert(points.nonEmpty)
     assert(points.head.nonEmpty)
@@ -44,7 +44,7 @@ object DelaunayUtil {
     // Lift points to higher dim
     val liftedPoints: Vector[Point] = points.map(p => Point(p.coordinates ++ Vector(p.zip(p).map({case (a, b) => a * b * 0.0001}).sum)))
 
-    val convexHullOfLift: Vector[Simplex] = {
+    val convexHullOfLift: Vector[PointedAffineSpace] = {
 
       var currentHull = QuickHullUtil.getConvexHull(liftedPoints)
       var hullSize: Int = 0
@@ -73,7 +73,7 @@ object DelaunayUtil {
 //    val lowerEnvelopeOfLiftedHull: Vector[Simplex] = convexHullOfLift.filter((simplex: Simplex) => simplex.signedDistance(simplex.vertices.head.zip(veryLowVector).map({case (a, b) => a + b})) >= 0.0)
 
 //    println("Normal vectors...")
-    val lowerEnvelopeOfLiftedHull: Vector[Simplex] = convexHullOfLift.filter((simplex: Simplex) => {
+    val lowerEnvelopeOfLiftedHull: Vector[PointedAffineSpace] = convexHullOfLift.filter((simplex: PointedAffineSpace) => {
 //      println(simplex.normalVector)
 //      simplex.normalVector.last < 0.0
       simplex.signedDistance(veryLowVector) >= 0.0
@@ -82,7 +82,7 @@ object DelaunayUtil {
 //    println("Lower envelope")
 //    lowerEnvelopeOfLiftedHull foreach println
 
-    val projectionOfLowerEnvelope: Vector[Simplex] = lowerEnvelopeOfLiftedHull.flatMap((simplex: Simplex) => {
+    val projectionOfLowerEnvelope: Vector[PointedAffineSpace] = lowerEnvelopeOfLiftedHull.flatMap((simplex: PointedAffineSpace) => {
 
       val trueVertices: Vector[Point] = simplex.vertices.map(p => Point(p.coordinates.reverse.tail.reverse))
 
@@ -95,7 +95,7 @@ object DelaunayUtil {
         val absDist: Point => Double = (v: Point) => scala.math.abs(LinearUtil.getSignedDistAndNormalToHyperplane(smallSubsetOfVertices)._1(v))
         val normal: Point = LinearUtil.getSignedDistAndNormalToHyperplane(smallSubsetOfVertices)._2
 
-        Simplex(smallSubsetOfVertices, absDist, normal)
+        PointedAffineSpace(smallSubsetOfVertices, absDist, normal)
       }).distinctBy(_.vertices.toSet)
 
     })
@@ -114,9 +114,9 @@ object DelaunayTest extends App {
 
   myPoints foreach {case Point(Vector(x, y)) => println("(" + x + ", " + y + ")")}
 
-  val triangulation: Vector[Simplex] = DelaunayUtil.getDelaunaySimplicialization(myPoints)
+  val triangulation: Vector[PointedAffineSpace] = DelaunayUtil.getDelaunaySimplicialization(myPoints)
 
-  triangulation foreach {(simplex: Simplex) =>
+  triangulation foreach {(simplex: PointedAffineSpace) =>
 //    println("Simplex:")
 //    println(simplex.vertices)
 
