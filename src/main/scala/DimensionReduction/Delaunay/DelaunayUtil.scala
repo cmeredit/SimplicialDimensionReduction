@@ -57,16 +57,6 @@ object DelaunayUtil {
       currentHull
     }
 
-//    println("Convex hull of lift")
-//    convexHullOfLift foreach {(simplex: Simplex) =>
-//      println(simplex.vertices.toString() + " has distance " + simplex.signedDistance({
-//        val projectionOfVertex = simplex.vertices.head.reverse.tail.reverse ++ Vector(0.0)
-//        projectionOfVertex
-//      }) + " to " + {
-//        val projectionOfVertex = simplex.vertices.head.reverse.tail.reverse ++ Vector(0.0)
-//        projectionOfVertex
-//      })
-//    }
 
 //    val lowerEnvelopeOfLiftedHull: Vector[Simplex] = convexHullOfLift.filter((simplex: Simplex) => simplex.signedDistance(veryLowVector) >= 0.0)
 
@@ -82,21 +72,28 @@ object DelaunayUtil {
 //    println("Lower envelope")
 //    lowerEnvelopeOfLiftedHull foreach println
 
-    val projectionOfLowerEnvelope: Vector[PointedAffineSpace] = lowerEnvelopeOfLiftedHull.flatMap((simplex: PointedAffineSpace) => {
+    val projectionOfLowerEnvelope: Vector[PointedAffineSpace] = lowerEnvelopeOfLiftedHull.map((simplex: PointedAffineSpace) => {
 
-      val trueVertices: Vector[Point] = simplex.vertices.map(p => Point(p.coordinates.reverse.tail.reverse))
+//      val trueVertices: Vector[Point] = simplex.vertices.map(p => Point(p.coordinates.reverse.tail.reverse))
+//
+////      println("True vertices:")
+////      println(trueVertices)
+////      println("Num true vertices:")
+////      println(trueVertices.length)
+//
+//      trueVertices.combinations(simplex.vertices.length - 1).map((smallSubsetOfVertices: Vector[Point]) => {
+//        val absDist: Point => Double = (v: Point) => scala.math.abs(LinearUtil.getSignedDistAndNormalToHyperplane(smallSubsetOfVertices)._1(v))
+//        val normal: Point = LinearUtil.getSignedDistAndNormalToHyperplane(smallSubsetOfVertices)._2
+//
+//        PointedAffineSpace(smallSubsetOfVertices, absDist, normal)
+//      }).distinctBy(_.vertices.toSet)
 
-//      println("True vertices:")
-//      println(trueVertices)
-//      println("Num true vertices:")
-//      println(trueVertices.length)
+      val newPoints: Vector[Point] = simplex.vertices.map(_.droppedLast)
+      val basis: Vector[Point] = newPoints.tail.flatMap((pt: Point) => pt - newPoints.head)
+      val absDist: Point => Double = (v: Point) => scala.math.abs(LinearUtil.getSignedDistAndNormalToHyperplane(basis)._1(v))
+      val normal: Point = LinearUtil.getSignedDistAndNormalToHyperplane(basis)._2
 
-      trueVertices.combinations(simplex.vertices.length - 1).map((smallSubsetOfVertices: Vector[Point]) => {
-        val absDist: Point => Double = (v: Point) => scala.math.abs(LinearUtil.getSignedDistAndNormalToHyperplane(smallSubsetOfVertices)._1(v))
-        val normal: Point = LinearUtil.getSignedDistAndNormalToHyperplane(smallSubsetOfVertices)._2
-
-        PointedAffineSpace(smallSubsetOfVertices, absDist, normal)
-      }).distinctBy(_.vertices.toSet)
+      PointedAffineSpace(newPoints, absDist, normal)
 
     })
 
