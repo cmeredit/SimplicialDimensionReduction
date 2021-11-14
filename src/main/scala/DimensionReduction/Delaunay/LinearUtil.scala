@@ -2,6 +2,8 @@ package DimensionReduction.Delaunay
 
 import DimensionReduction.Point
 
+import spire.math.Rational
+
 /** Provides several Linear Algebra functions.
  *
  *  This object is meant to provide several quality of life functions for working with vectors. The most significant
@@ -50,14 +52,14 @@ object LinearUtil {
     // A basis must contain vectors of uniform dimension.
     assert(basis.map(_.dimension).distinct.length == 1)
 
-    val rref: Vector[Vector[Double]] = getRREF(basis.map(_.coordinates))
+    val rref: Vector[Vector[Rational]] = getRREF(basis.map(_.coordinates.map(Rational(_))))
     val pivotPositions: Vector[Int] = basis.indices.flatMap(rref(_).zipWithIndex.find(_._1 != 0.0).map(_._2)).toVector
     val nonpivotIndex: Int = basis.head.indices.filter(!pivotPositions.contains(_)).head
-    val rrefTranspose: Vector[Vector[Double]] = rref.transpose
-    val nonpivotColumn: Vector[Double] = rrefTranspose(nonpivotIndex)
+    val rrefTranspose: Vector[Vector[Rational]] = rref.transpose
+    val nonpivotColumn: Vector[Rational] = rrefTranspose(nonpivotIndex)
 
     // Concerned about -0.0? Me too.
-    val mostOfNormal: Vector[Double] = nonpivotColumn.map(entry => if (entry == 0.0) 0.0 else -1.0 * entry)
+    val mostOfNormal: Vector[Double] = nonpivotColumn.map(entry => if (entry == Rational(0.0)) 0.0 else (Rational(-1.0) * entry).toDouble)
 
     normalize(Point(
       mostOfNormal.dropRight(mostOfNormal.length - nonpivotIndex) ++
@@ -67,31 +69,31 @@ object LinearUtil {
   }
 
   /** Computes the row-reduced echelon form of the supplied matrix using Gaussian elimination. */
-  def getRREF(rowMajorMatrix: Vector[Vector[Double]]): Vector[Vector[Double]] = {
+  def getRREF(rowMajorMatrix: Vector[Vector[Rational]]): Vector[Vector[Rational]] = {
 
-    def forwardReduce(matrix: Vector[Vector[Double]]): Vector[Vector[Double]] = {
+    def forwardReduce(matrix: Vector[Vector[Rational]]): Vector[Vector[Rational]] = {
       // Find the first nonzero column
-      val transpose: Vector[Vector[Double]] = matrix.transpose
+      val transpose: Vector[Vector[Rational]] = matrix.transpose
 
-      val pivotColumnIndex: Option[Int] = transpose.zipWithIndex.find({case (col, _) => col.exists(_ != 0.0)}).map(_._2)
+      val pivotColumnIndex: Option[Int] = transpose.zipWithIndex.find({case (col, _) => col.exists(_ != Rational(0.0))}).map(_._2)
 
       pivotColumnIndex match {
         case Some(idx) =>
           // Put the nonzero entry of the pivot column on top
-          val reorderedMatrix: Vector[Vector[Double]] = matrix.sortBy(row => scala.math.abs(row(idx))).reverse
+          val reorderedMatrix: Vector[Vector[Rational]] = matrix.sortBy(row => row(idx).abs).reverse
 
 //          println("Reordered matrix...")
 //          reorderedMatrix foreach println
 
-          val pivotRow: Vector[Double] = reorderedMatrix.head
-          val pivotEntry: Double = pivotRow(idx)
+          val pivotRow: Vector[Rational] = reorderedMatrix.head
+          val pivotEntry: Rational = pivotRow(idx)
 
 //          println("Pivot row...")
 //          println(pivotRow)
 
-          val eliminatedMatrixTail: Vector[Vector[Double]] = reorderedMatrix.tail.map((row: Vector[Double]) => {
-            val scalar: Double = row(idx) / pivotEntry
-            row.zip(pivotRow).zipWithIndex.map({case ((rowEntry, pivotEntry), curIdx) => if (curIdx == idx) 0.0 else rowEntry - scalar * pivotEntry})
+          val eliminatedMatrixTail: Vector[Vector[Rational]] = reorderedMatrix.tail.map((row: Vector[Rational]) => {
+            val scalar: Rational = row(idx) / pivotEntry
+            row.zip(pivotRow).map({case (rowEntry, pivotEntry) => rowEntry - scalar * pivotEntry})
           })
 
 //          println("Result of this step...")
@@ -105,24 +107,24 @@ object LinearUtil {
       }
     }
 
-    def rescaleByPivot(row: Vector[Double]): Vector[Double] = row.find(_ != 0.0) match {
+    def rescaleByPivot(row: Vector[Rational]): Vector[Rational] = row.find(_ != Rational(0.0)) match {
       case Some(firstNonzeroEntry) => row.map(_ / firstNonzeroEntry)
       case None => row
     }
 
-    def backSub(matrix: Vector[Vector[Double]]): Vector[Vector[Double]] = {
+    def backSub(matrix: Vector[Vector[Rational]]): Vector[Vector[Rational]] = {
       if (matrix.isEmpty)
         matrix
       else {
-        val lastRow: Vector[Double] = matrix.reverse.head
-        val firstRows: Vector[Vector[Double]] = matrix.reverse.tail.reverse
+        val lastRow: Vector[Rational] = matrix.reverse.head
+        val firstRows: Vector[Vector[Rational]] = matrix.reverse.tail.reverse
 
         val pivotLocation: Option[Int] = lastRow.zipWithIndex.find(_._1 != 0.0).map(_._2)
 
         pivotLocation match {
           case Some(idx) =>
             val pivotValue = lastRow(idx)
-            val firstRowsEliminated: Vector[Vector[Double]] = firstRows.map(row => row.zip(lastRow).map({case (rowEntry, pivotRowEntry) => rowEntry - pivotRowEntry * row(idx) / pivotValue}))
+            val firstRowsEliminated: Vector[Vector[Rational]] = firstRows.map(row => row.zip(lastRow).map({case (rowEntry, pivotRowEntry) => rowEntry - pivotRowEntry * row(idx) / pivotValue}))
             if (firstRowsEliminated.nonEmpty)
               backSub(firstRowsEliminated) ++ Vector(lastRow)
             else
@@ -134,7 +136,7 @@ object LinearUtil {
 
     }
 
-    val forwardReducedMatrix: Vector[Vector[Double]] = forwardReduce(rowMajorMatrix)
+    val forwardReducedMatrix: Vector[Vector[Rational]] = forwardReduce(rowMajorMatrix)
     backSub(forwardReducedMatrix.map(rescaleByPivot))
   }
 
@@ -157,10 +159,10 @@ object LinearUtil {
           Point(v.zip(basePoint).map({case (vCoord, basePointCoord) => vCoord-basePointCoord}))
         )
 
-        val rref: Vector[Vector[Double]] = getRREF(displacementVectors.map(_.coordinates))
+        val rref: Vector[Vector[Rational]] = getRREF(displacementVectors.map(_.coordinates.map(Rational(_))))
 
         // If the rref of displacement vectors contains a row of all zeros, then displacementVectors is linearly dependent, so we should return false...
-        rref.find((row: Vector[Double]) => row.forall(_ == 0.0)) match {
+        rref.find((row: Vector[Rational]) => row.forall(_ == 0.0)) match {
           case Some(_) => false // There's a bad row! These points don't define a hyperplane of codimension 1
           case None => true // All rows are nonzero. We're good!
         }
@@ -178,6 +180,6 @@ object LinearUtilTest extends App {
   println((c-a).get.toString)
 
 
-  println(LinearUtil.getRREF(Vector((b-a).get, (c-a).get).map(_.coordinates)))
+  println(LinearUtil.getRREF(Vector((b-a).get.map(Rational(_)), (c-a).get.map(Rational(_)))))
 
 }
