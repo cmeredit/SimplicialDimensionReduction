@@ -14,13 +14,21 @@ case class Point(coordinates: Vector[Double]) {
   /** The dimension of the point. Equal to the length of the coordinates vector. */
   val dimension: Int = coordinates.length
 
+  /** Returns [[coordinates]](i) */
   def apply(i: Int): Double = coordinates(i)
+  /** Returns [[coordinates]].head */
   def head: Double = coordinates.head
+  /** Returns [[coordinates]] zipped with other's coordinates */
   def zip(other: Point): Vector[(Double, Double)] = coordinates.zip(other.coordinates)
+  /** Returns [[coordinates]].zipWithIndex */
   def zipWithIndex: Vector[(Double, Int)] = coordinates.zipWithIndex
+  /** Returns [[coordinates]].map(op) */
   def map[B](op: Double => B): Vector[B] = coordinates.map(op)
+  /** Returns [[coordinates]].nonEmpty */
   def nonEmpty: Boolean = coordinates.nonEmpty
+  /** Returns [[coordinates]].find(p) */
   def find(p: Double => Boolean): Option[Double] = coordinates.find(p)
+  /** Returns [[coordinates]].indices */
   def indices: Range = coordinates.indices
 
   private def applyCoordinatewise(other: Point)(op: (Double, Double) => Double): Option[Point] =
@@ -54,6 +62,6 @@ case class Point(coordinates: Vector[Double]) {
   /** (Optionally) Returns the distance between this and other */
   def dist(other: Point): Option[Double] = distSquared(other).map(sqrt)
 
-  override def toString: String =
-    "Point(Coordinates: " + coordinates.toString() + ", Dimension: " + dimension.toString
+  /** Returns a string representation */
+  override def toString: String = "Point(" + coordinates.map(_.toString).reduce(_ + ", " + _) + ")"
 }
