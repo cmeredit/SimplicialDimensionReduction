@@ -1,5 +1,0 @@
-package GLUtil
-
-class ViewPort {
-
-}
