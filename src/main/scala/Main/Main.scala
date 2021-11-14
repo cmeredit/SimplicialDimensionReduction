@@ -20,21 +20,16 @@ import _root_.GLUtil._
 
 import scala.math.random
 
-object Main {
-  def main(args: Array[String]): Unit = {
-    new Main().run()
-  }
-}
+object Main extends App {
 
-class Main {
   // The window handle
   private var window = 0L
 
   private lazy val primaryMode: GLFWVidMode = glfwGetVideoMode(glfwGetPrimaryMonitor())
 
   // Matrix for the projection-view-model transform and its buffer
-  private val pvmFloatBuffer = MemoryUtil.memAllocFloat(16)
-  private val pvMatrix = new Matrix4f
+  private lazy val pvmFloatBuffer = MemoryUtil.memAllocFloat(16)
+  private lazy val pvMatrix = new Matrix4f()
 
   // Time between frames
   private var deltaTime: Float = 0.0f
@@ -58,158 +53,164 @@ class Main {
 
   private val num3dPointsToHull: Int = 500
 
-  private lazy val hdv: HighDimViewer = whatToLoad match {
-    case ShouldLoadIris => new HighDimViewer((0,0), (10,10), iris._1, iris._2)
-    case ShouldLoadRandom3dHull =>
-      val points: Vector[Point] = (1 to num3dPointsToHull).map(_ => Vector(random(), random(), random())).toVector.map(Point)
+  private lazy val hdv: HighDimViewer = {
 
-      var currentPoints: Vector[Point] = points
-      var previousNumPoints: Int = currentPoints.length
-      var currentHull: Vector[Simplex] = QuickHullUtil.getConvexHull(currentPoints)
-      var currentNumPoints: Int = currentPoints.length
+    println("AHHHHH FUCK HERE")
 
-      do {
-        previousNumPoints = currentNumPoints
+    println(whatToLoad)
+    whatToLoad match {
+      case ShouldLoadIris => new HighDimViewer((0,0), (10,10), iris._1, iris._2)
+      case ShouldLoadRandom3dHull =>
+        val points: Vector[Point] = (1 to num3dPointsToHull).map(_ => Vector(random(), random(), random())).toVector.map(Point)
 
-        currentPoints = currentHull.flatMap(_.vertices).distinct
+        var currentPoints: Vector[Point] = points
+        var previousNumPoints: Int = currentPoints.length
+        var currentHull: Vector[Simplex] = QuickHullUtil.getConvexHull(currentPoints)
+        var currentNumPoints: Int = currentPoints.length
 
-        currentHull = QuickHullUtil.getConvexHull(currentPoints)
+        do {
+          previousNumPoints = currentNumPoints
 
-        currentNumPoints = currentHull.flatMap(_.vertices).distinct.length
-      } while (currentNumPoints != previousNumPoints)
+          currentPoints = currentHull.flatMap(_.vertices).distinct
 
+          currentHull = QuickHullUtil.getConvexHull(currentPoints)
 
-      val convexHull: Vector[Simplex] = currentHull
-
-      val convexHullVertices: Vector[Point] = convexHull.flatMap(_.vertices)
-      val interiorVertices: Vector[Vector[Float]] = points.diff(convexHullVertices).map(_.map(_.toFloat))
-
-      val floatVertexInfo: Vector[Vector[Float]] = convexHullVertices.map(_.map(_.toFloat)) ++ interiorVertices
-      val floatColorInfo: Vector[Vector[Float]] = convexHullVertices.map(_ => Vector(0.0f, 0.0f, 1.0f)) ++ interiorVertices.map(_ => Vector(1.0f, 0.0f, 0.0f))
+          currentNumPoints = currentHull.flatMap(_.vertices).distinct.length
+        } while (currentNumPoints != previousNumPoints)
 
 
-      new HighDimViewer((0,0), (10, 10), floatVertexInfo, floatColorInfo)
-    case ShouldLoadRandom3dSphere =>
-      val points: Vector[Point] = (1 to num3dPointsToHull).map(_ => {
+        val convexHull: Vector[Simplex] = currentHull
 
-        val theta: Double = random() * 2.0 * scala.math.Pi
-        val phi: Double = random() * scala.math.Pi
+        val convexHullVertices: Vector[Point] = convexHull.flatMap(_.vertices)
+        val interiorVertices: Vector[Vector[Float]] = points.diff(convexHullVertices).map(_.map(_.toFloat))
 
-        Vector(scala.math.sin(phi) * scala.math.cos(theta), scala.math.sin(phi) * scala.math.sin(theta), scala.math.cos(phi))
-
-
-        val r: Double = (random() * 2.0 - 1.0) * 4.0
-
-        val x: Double = r * scala.math.cos(theta) //random() * 2.0 - 1.0
-        val y: Double = r * scala.math.sin(theta) //random() * 2.0 - 1.0
-        Vector(x, x*x + y*y, y)
-
-      }).toVector.map(Point)
-
-      val convexHull: Vector[Simplex] = QuickHullUtil.getConvexHull(points)
-
-      val convexHullVertices: Vector[Point] = convexHull.flatMap(_.vertices)
-      val interiorVertices: Vector[Vector[Float]] = points.diff(convexHullVertices).map(_.map(_.toFloat))
-
-      val numPerNormal: Int = 40
-      val normalLength: Double = 0.1
+        val floatVertexInfo: Vector[Vector[Float]] = convexHullVertices.map(_.map(_.toFloat)) ++ interiorVertices
+        val floatColorInfo: Vector[Vector[Float]] = convexHullVertices.map(_ => Vector(0.0f, 0.0f, 1.0f)) ++ interiorVertices.map(_ => Vector(1.0f, 0.0f, 0.0f))
 
 
-      val numConnectingVertices: Int = 60
+        new HighDimViewer((0,0), (10, 10), floatVertexInfo, floatColorInfo)
+      case ShouldLoadRandom3dSphere =>
+        val points: Vector[Point] = (1 to num3dPointsToHull).map(_ => {
 
-      val floatVertexInfo: Vector[Vector[Float]] = convexHullVertices.map(_.map(_.toFloat)) ++
-        interiorVertices ++
-        convexHull.flatMap((s: Simplex) => {
-        val centroid: Point = Point(s.vertices.map(_.coordinates).transpose.map(_.sum / 3.0))
-        centroid.zip(s.normalVector).map({case (a, b) => (a+b).toFloat})
-        centroid.map(_.toFloat)
+          val theta: Double = random() * 2.0 * scala.math.Pi
+          val phi: Double = random() * scala.math.Pi
 
-        (0 until numPerNormal).map((n: Int) => centroid.zip(s.normalVector).map({case (a, b) => (a + b * (n.toDouble / numPerNormal.toDouble) * normalLength).toFloat})) ++ s.vertices.combinations(2).flatMap(combo => {
-          val x0 = combo(0)(0)
-          val y0 = combo(0)(1)
-          val z0 = combo(0)(2)
-          val x1 = combo(1)(0)
-          val y1 = combo(1)(1)
-          val z1 = combo(1)(2)
-
-          val dx = x1-x0
-          val dy = y1-y0
-          val dz = z1-z0
+          Vector(scala.math.sin(phi) * scala.math.cos(theta), scala.math.sin(phi) * scala.math.sin(theta), scala.math.cos(phi))
 
 
-          (0 until numConnectingVertices).map(n => {
-            val t = n.toDouble / numConnectingVertices.toDouble
-            Vector(x0 + t*dx, y0 + t*dy, z0 + t*dz)
-          }).toVector.map(_.map(_.toFloat))
-        })
+          val r: Double = (random() * 2.0 - 1.0) * 4.0
 
-      })
+          val x: Double = r * scala.math.cos(theta) //random() * 2.0 - 1.0
+          val y: Double = r * scala.math.sin(theta) //random() * 2.0 - 1.0
+          Vector(x, x*x + y*y, y)
+
+        }).toVector.map(Point)
+
+        val convexHull: Vector[Simplex] = QuickHullUtil.getConvexHull(points)
+
+        val convexHullVertices: Vector[Point] = convexHull.flatMap(_.vertices)
+        val interiorVertices: Vector[Vector[Float]] = points.diff(convexHullVertices).map(_.map(_.toFloat))
+
+        val numPerNormal: Int = 40
+        val normalLength: Double = 0.1
 
 
+        val numConnectingVertices: Int = 60
 
-      val floatColorInfo: Vector[Vector[Float]] = convexHullVertices.map(_ => Vector(0.0f, 0.0f, 1.0f)) ++
-        interiorVertices.map(_ => Vector(1.0f, 0.0f, 0.0f)) ++
-        convexHull.flatMap(_ => (0 until numPerNormal - 1).map(_ => Vector(0.0f, 1.0f, 0.0f)).toVector ++ Vector(Vector(1.0f, 1.0f, 1.0f)) ++ Vector.fill(3 * numConnectingVertices)(Vector(0.0f, 0.0f, 0.0f)))
+        val floatVertexInfo: Vector[Vector[Float]] = convexHullVertices.map(_.map(_.toFloat)) ++
+          interiorVertices ++
+          convexHull.flatMap((s: Simplex) => {
+            val centroid: Point = Point(s.vertices.map(_.coordinates).transpose.map(_.sum / 3.0))
+            centroid.zip(s.normalVector).map({case (a, b) => (a+b).toFloat})
+            centroid.map(_.toFloat)
+
+            (0 until numPerNormal).map((n: Int) => centroid.zip(s.normalVector).map({case (a, b) => (a + b * (n.toDouble / numPerNormal.toDouble) * normalLength).toFloat})) ++ s.vertices.combinations(2).flatMap(combo => {
+              val x0 = combo(0)(0)
+              val y0 = combo(0)(1)
+              val z0 = combo(0)(2)
+              val x1 = combo(1)(0)
+              val y1 = combo(1)(1)
+              val z1 = combo(1)(2)
+
+              val dx = x1-x0
+              val dy = y1-y0
+              val dz = z1-z0
 
 
+              (0 until numConnectingVertices).map(n => {
+                val t = n.toDouble / numConnectingVertices.toDouble
+                Vector(x0 + t*dx, y0 + t*dy, z0 + t*dz)
+              }).toVector.map(_.map(_.toFloat))
+            })
 
-//      points.foreach((v: Point) => {
-//        println("Minimum distance to a simplex in the convex hull " + convexHull.map(_.signedDistance(v)).max)
-//      })
+          })
 
 
 
-      new HighDimViewer((0,0), (10, 10), floatVertexInfo, floatColorInfo)
-
-    case ShouldLoadRandomNormals =>
-
-      val pointAngles: Vector[(Double, Double)] = (1 to num3dPointsToHull).map(_ => {
-
-        val theta: Double = random() * 2.0 * scala.math.Pi
-        val phi: Double = random() * scala.math.Pi
-
-        (phi, theta)
-      }).toVector
-
-      val numPerNormal: Int = 20
-      val normalLength: Double = 0.2
-
-      val floatVertexInfo: Vector[Vector[Float]] = pointAngles.map({case (phi, theta) => Vector(scala.math.sin(phi) * scala.math.cos(theta), scala.math.sin(phi) * scala.math.sin(theta), scala.math.cos(phi)).map(_.toFloat)}) ++
-        pointAngles.flatMap({ case (phi, theta) =>
-
-          def sphereCoord: (Double, Double) => Point = {case (p, t) =>
-            Point(Vector(scala.math.sin(p) * scala.math.cos(t), scala.math.sin(p) * scala.math.sin(t), scala.math.cos(p)))
-          }
-
-          val basePoint: Point = sphereCoord(phi, theta)
-
-          val simplexVertices = Vector(sphereCoord(phi + 0.025, theta), sphereCoord(phi - 0.025, theta - 0.05), sphereCoord(phi - 0.025, theta + 0.05))
-
-          val (dist, normalGuess): (Point => Double, Point) = LinearUtil.getSignedDistAndNormalToHyperplane(simplexVertices)
-
-          val normal: Point = if (dist(Point(Vector(0.0, 0.0, 0.0))) <= 0.0) normalGuess else normalGuess * -1.0
-
-          val dp: Double = normal.zip(basePoint).map({case (a, b) => a * b}).sum
-
-          if (dp < 0.9) {
-            println("")
-            println("Uh oh! Our normal vector is fucked!")
-            println("Dot product: " + dp)
-            println("Calculated normal vector: (" + normal.map(_.toString).reduce(_ + ", " + _) + ")")
-            println("Points on the plane: " + simplexVertices.map((p: Point) => "(" + p.map(_.toString).reduce(_ + ", " + _) + ")").reduce(_ + " | " + _))
-          }
+        val floatColorInfo: Vector[Vector[Float]] = convexHullVertices.map(_ => Vector(0.0f, 0.0f, 1.0f)) ++
+          interiorVertices.map(_ => Vector(1.0f, 0.0f, 0.0f)) ++
+          convexHull.flatMap(_ => (0 until numPerNormal - 1).map(_ => Vector(0.0f, 1.0f, 0.0f)).toVector ++ Vector(Vector(1.0f, 1.0f, 1.0f)) ++ Vector.fill(3 * numConnectingVertices)(Vector(0.0f, 0.0f, 0.0f)))
 
 
-          (0 until numPerNormal).map((n: Int) => basePoint.zip(normal).map({case (a, b) => (a + b * (n.toDouble / numPerNormal.toDouble) * normalLength).toFloat})) ++ simplexVertices.map(_.map(_.toFloat))
 
-      })
-      val floatColorInfo: Vector[Vector[Float]] = pointAngles.map(_ => Vector(0.0f, 0.0f, 1.0f)) ++
-        pointAngles.flatMap(_ => (0 until numPerNormal - 1).map(_ => Vector(0.0f, 1.0f, 0.0f)).toVector ++ Vector(Vector(1.0f, 1.0f, 1.0f)) ++ Vector(Vector(1.0f, 0.0f, 0.0f), Vector(1.0f, 0.0f, 0.0f), Vector(1.0f, 0.0f, 0.0f)))
-
-      new HighDimViewer((0,0), (10, 10), floatVertexInfo, floatColorInfo)
+        //      points.foreach((v: Point) => {
+        //        println("Minimum distance to a simplex in the convex hull " + convexHull.map(_.signedDistance(v)).max)
+        //      })
 
 
-    case _ => new HighDimViewer((0,0), (10,10), iris._1, iris._2)
+
+        new HighDimViewer((0,0), (10, 10), floatVertexInfo, floatColorInfo)
+
+      case ShouldLoadRandomNormals =>
+
+        val pointAngles: Vector[(Double, Double)] = (1 to num3dPointsToHull).map(_ => {
+
+          val theta: Double = random() * 2.0 * scala.math.Pi
+          val phi: Double = random() * scala.math.Pi
+
+          (phi, theta)
+        }).toVector
+
+        val numPerNormal: Int = 20
+        val normalLength: Double = 0.2
+
+        val floatVertexInfo: Vector[Vector[Float]] = pointAngles.map({case (phi, theta) => Vector(scala.math.sin(phi) * scala.math.cos(theta), scala.math.sin(phi) * scala.math.sin(theta), scala.math.cos(phi)).map(_.toFloat)}) ++
+          pointAngles.flatMap({ case (phi, theta) =>
+
+            def sphereCoord: (Double, Double) => Point = {case (p, t) =>
+              Point(Vector(scala.math.sin(p) * scala.math.cos(t), scala.math.sin(p) * scala.math.sin(t), scala.math.cos(p)))
+            }
+
+            val basePoint: Point = sphereCoord(phi, theta)
+
+            val simplexVertices = Vector(sphereCoord(phi + 0.025, theta), sphereCoord(phi - 0.025, theta - 0.05), sphereCoord(phi - 0.025, theta + 0.05))
+
+            val (dist, normalGuess): (Point => Double, Point) = LinearUtil.getSignedDistAndNormalToHyperplane(simplexVertices)
+
+            val normal: Point = if (dist(Point(Vector(0.0, 0.0, 0.0))) <= 0.0) normalGuess else normalGuess * -1.0
+
+            val dp: Double = normal.zip(basePoint).map({case (a, b) => a * b}).sum
+
+            if (dp < 0.9) {
+              println("")
+              println("Uh oh! Our normal vector is fucked!")
+              println("Dot product: " + dp)
+              println("Calculated normal vector: (" + normal.map(_.toString).reduce(_ + ", " + _) + ")")
+              println("Points on the plane: " + simplexVertices.map((p: Point) => "(" + p.map(_.toString).reduce(_ + ", " + _) + ")").reduce(_ + " | " + _))
+            }
+
+
+            (0 until numPerNormal).map((n: Int) => basePoint.zip(normal).map({case (a, b) => (a + b * (n.toDouble / numPerNormal.toDouble) * normalLength).toFloat})) ++ simplexVertices.map(_.map(_.toFloat))
+
+          })
+        val floatColorInfo: Vector[Vector[Float]] = pointAngles.map(_ => Vector(0.0f, 0.0f, 1.0f)) ++
+          pointAngles.flatMap(_ => (0 until numPerNormal - 1).map(_ => Vector(0.0f, 1.0f, 0.0f)).toVector ++ Vector(Vector(1.0f, 1.0f, 1.0f)) ++ Vector(Vector(1.0f, 0.0f, 0.0f), Vector(1.0f, 0.0f, 0.0f), Vector(1.0f, 0.0f, 0.0f)))
+
+        new HighDimViewer((0,0), (10, 10), floatVertexInfo, floatColorInfo)
+
+
+      case _ => new HighDimViewer((0,0), (10,10), iris._1, iris._2)
+    }
   }
 
 
@@ -544,4 +545,7 @@ class Main {
     glfwTerminate()
     glfwSetErrorCallback(null).free()
   }
+
+
+  run()
 }
