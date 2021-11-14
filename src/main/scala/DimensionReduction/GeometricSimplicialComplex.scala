@@ -22,12 +22,16 @@ import DimensionReduction.Delaunay.PointedAffineSpace
  *  The degeneracy maps should not be computationally useful. If they are, please alert me and I'll implement them.
  *
  */
-class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace]) {
+class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace],
+                                 forcedNSimplices: Option[Map[Int,Vector[Simplex]]] = None) {
 
   /** The highest inherent dimension of any simplex in the complex.
    *  This is also the lowest dimension of a Euclidean space into which the complex can be embedded
    */
-  val maxComponentDimension: Int = componentSpaces.map(_.vertices.length).max - 1
+  val maxComponentDimension: Int = forcedNSimplices match {
+    case Some(forced) => forced.keys.max
+    case None => componentSpaces.map(_.vertices.length).max - 1
+  }
 
   // Start by converting the component spaces into simplices and group them according to their dimension.
   // The component spaces might have the following problems:
@@ -85,7 +89,10 @@ class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace]) {
    *  This map only stores the simplices of the complex. It does not store how those simplices are connected.
    *  For this information, see [[faceMap]].
    */
-  val nSimplices: Map[Int, Vector[Simplex]] = (0 until maxComponentDimension).foldRight(initSimplexMap)(getUpdatedSimplexMap)
+  val nSimplices: Map[Int, Vector[Simplex]] = forcedNSimplices match {
+    case Some(forced) => forced
+    case None => (0 until maxComponentDimension).foldRight(initSimplexMap)(getUpdatedSimplexMap)
+  }
 
   /** The simplices of the complex. */
   val simplices: Vector[Simplex] = nSimplices.values.flatten.toVector
@@ -96,7 +103,7 @@ class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace]) {
   }).toMap
 
   /** Maps a number n and a simplex s to the collection of n-faces of s. */
-  val nthFaceMap: Map[(Int, Simplex), Vector[Simplex]] = simplices.zip(0 to maxComponentDimension).map({case (simplex, n) =>
+  val nFaceMap: Map[(Int, Simplex), Vector[Simplex]] = simplices.zip(0 to maxComponentDimension).map({case (simplex, n) =>
     ((n, simplex), simplices.filter((candidateFace: Simplex) => candidateFace.points.toSet.subsetOf(simplex.points.toSet) && candidateFace.points.length == n))
   }).toMap
 
@@ -105,6 +112,18 @@ class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace]) {
     (simplex, simplices.filter((candidateParent: Simplex) => simplex.points.toSet.subsetOf(candidateParent.points.toSet)))
   }).toMap
 
-  // todo: Add function to remove a simplex. Removing a simplex should remove all of its ancestors
+  def getComplexWithout(simplicesToExclude: Vector[Simplex]): GeometricSimplicialComplex = {
+
+    // Problem: To *TRULY* exclude a simplex, we must exclude all of its ancestors.
+    // Note: The ancestor map is an order relation. In particular, it is reflexive, so we don't accidentally remove the
+    // original simplices here.
+    val allSimplicesToExclude: Vector[Simplex] = simplicesToExclude.flatMap(ancestorMap)
+
+    val newNSimplices: Map[Int, Vector[Simplex]] = nSimplices.map({case (n, nSimplices) =>
+      (n, nSimplices.diff(allSimplicesToExclude))
+    }).filter(_._2.nonEmpty)
+
+    new GeometricSimplicialComplex(Vector(), Some(newNSimplices))
+  }
 
 }
