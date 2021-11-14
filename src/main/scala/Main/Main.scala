@@ -55,8 +55,6 @@ object Main extends App {
 
   private lazy val hdv: HighDimViewer = {
 
-    println("AHHHHH FUCK HERE")
-
     println(whatToLoad)
     whatToLoad match {
       case ShouldLoadIris => new HighDimViewer((0,0), (10,10), iris._1, iris._2)
