@@ -4,6 +4,12 @@ import DimensionReduction.Delaunay.PointedAffineSpace
 
 /** The geometric realization of a simplicial set.
  *
+ *  The default constructor builds a simplicial complex from a set of pointed affine spaces. There is no
+ *  guarantee that a simplicial complex only contains nondegenerate simplices - buyer beware.
+ *  The optional parameter, forcedNSimplices, is used internally when pruning the simplicial complex. It
+ *  generally should not be used externally since there are no checks in place to guarantee that forcedNSimplices
+ *  actually defines a valid simplicial complex.
+ *
  *  A simplicial set is a contravariant functor from the simplicial category Δ to the category of sets.
  *  The connection of simplicial sets to geometric simplicial complexes is explained below.
  *
