@@ -85,16 +85,26 @@ class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace]) {
    *  This map only stores the simplices of the complex. It does not store how those simplices are connected.
    *  For this information, see [[faceMap]].
    */
-  val simplices: Map[Int, Vector[Simplex]] = (0 until maxComponentDimension).foldRight(initSimplexMap)(getUpdatedSimplexMap)
+  val nSimplices: Map[Int, Vector[Simplex]] = (0 until maxComponentDimension).foldRight(initSimplexMap)(getUpdatedSimplexMap)
 
-  /** Maps a simplex to all of its faces */
-  val faceMap: Map[Simplex, Vector[Simplex]] = simplices.values.flatten.map((simplex: Simplex) => {
-    (simplex, simplices.values.flatten.filter((candidateFace: Simplex) => candidateFace.points.toSet.subsetOf(simplex.points.toSet)).toVector)
+  /** The simplices of the complex. */
+  val simplices: Vector[Simplex] = nSimplices.values.flatten.toVector
+
+  /** Maps a simplex to all of its faces. */
+  val faceMap: Map[Simplex, Vector[Simplex]] = simplices.map((simplex: Simplex) => {
+    (simplex, simplices.filter((candidateFace: Simplex) => candidateFace.points.toSet.subsetOf(simplex.points.toSet)))
   }).toMap
 
-  /** Maps a number n and a simplex s to the n-faces of s */
-  val nthFaceMap: Map[(Int, Simplex), Vector[Simplex]] = simplices.values.flatten.zip(0 to maxComponentDimension).map({case (simplex, n) =>
-    ((n, simplex), simplices.values.flatten.filter((candidateFace: Simplex) => candidateFace.points.toSet.subsetOf(simplex.points.toSet) && candidateFace.points.length == n).toVector)
+  /** Maps a number n and a simplex s to the collection of n-faces of s. */
+  val nthFaceMap: Map[(Int, Simplex), Vector[Simplex]] = simplices.zip(0 to maxComponentDimension).map({case (simplex, n) =>
+    ((n, simplex), simplices.filter((candidateFace: Simplex) => candidateFace.points.toSet.subsetOf(simplex.points.toSet) && candidateFace.points.length == n))
   }).toMap
+
+  /** Maps a simplex to the collection of simplices that contain it. */
+  val ancestorMap: Map[Simplex, Vector[Simplex]] = simplices.map((simplex: Simplex) => {
+    (simplex, simplices.filter((candidateParent: Simplex) => simplex.points.toSet.subsetOf(candidateParent.points.toSet)))
+  }).toMap
+
+  // todo: Add function to remove a simplex. Removing a simplex should remove all of its ancestors
 
 }
