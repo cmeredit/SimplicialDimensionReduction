@@ -31,6 +31,8 @@ case class Point(coordinates: Vector[Double]) {
   /** Returns [[coordinates]].indices */
   def indices: Range = coordinates.indices
 
+  def droppedLast: Point = Point(coordinates.dropRight(1))
+
   private def applyCoordinatewise(other: Point)(op: (Double, Double) => Double): Option[Point] =
     if (dimension == other.dimension) {
       Some(
