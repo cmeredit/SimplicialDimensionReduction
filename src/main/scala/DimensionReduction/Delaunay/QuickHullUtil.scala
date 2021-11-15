@@ -51,7 +51,7 @@ object QuickHullUtil {
     val distToStartingVertices: Point => Double = LinearUtil.getSignedDistAndNormalToHyperplane(startingVertices)._1
 
     // Get a the farthest (absolute) point from that hyperplane
-    val vertexOfMaximalAbsoluteDistance: Point = points.maxBy((v: Point) => scala.math.abs(distToStartingVertices(v)))
+    val vertexOfMaximalAbsoluteDistance: Point = points.diff(startingVertices).maxBy((v: Point) => scala.math.abs(distToStartingVertices(v)))
 
 //    DebugPrinter.print("Starting vertices:")
 //    DebugPrinter.print(startingVertices)
