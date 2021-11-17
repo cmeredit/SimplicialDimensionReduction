@@ -18,6 +18,7 @@ case class Point(coordinates: Vector[Double]) {
   def apply(i: Int): Double = coordinates(i)
   /** Returns [[coordinates]].head */
   def head: Double = coordinates.head
+  def tail: Point = Point(coordinates.tail)
   /** Returns [[coordinates]] zipped with other's coordinates */
   def zip(other: Point): Vector[(Double, Double)] = coordinates.zip(other.coordinates)
   /** Returns [[coordinates]].zipWithIndex */
