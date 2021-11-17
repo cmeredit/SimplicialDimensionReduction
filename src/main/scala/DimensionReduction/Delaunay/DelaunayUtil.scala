@@ -2,6 +2,7 @@ package DimensionReduction.Delaunay
 
 import DimensionReduction.Point
 
+import scala.annotation.tailrec
 import scala.math.random
 
 /** Provides functions to compute the Delaunay simplicialization of a collection of points of uniform dimension.
@@ -42,19 +43,37 @@ object DelaunayUtil {
 //    println(veryLowVector)
 
     // Lift points to higher dim
-    val liftedPoints: Vector[Point] = points.map(p => Point(p.coordinates ++ Vector(p.zip(p).map({case (a, b) => a * b * 0.0001}).sum)))
+    val liftedPoints: Vector[Point] = points.map(p => Point(p.coordinates ++ Vector(p.zip(p).map({case (a, b) => a * b * 0.1}).sum)))
 
-    val convexHullOfLift: Vector[PointedAffineSpace] = {
+//    val convexHullOfLift: Vector[PointedAffineSpace] = {
+//
+//      var currentHull = QuickHullUtil.getConvexHull(liftedPoints)
+//      var hullSize: Int = 0
+//
+//      do {
+//        hullSize = currentHull.flatMap(_.vertices).distinct.length
+//        currentHull = QuickHullUtil.getConvexHull(currentHull.flatMap(_.vertices).distinct)
+//      } while (hullSize != currentHull.flatMap(_.vertices).distinct.length)
+//
+//      currentHull
+//    }
 
-      var currentHull = QuickHullUtil.getConvexHull(liftedPoints)
-      var hullSize: Int = 0
+    @tailrec
+    def lexographicLessThan(p: Point, q: Point): Boolean = {
+      if (p.head == q.head)
+        if (p.nonEmpty && q.nonEmpty)
+          lexographicLessThan(p.tail, q.tail)
+        else false
+      else
+        p.head < q.head
+    }
 
-      do {
-        hullSize = currentHull.flatMap(_.vertices).distinct.length
-        currentHull = QuickHullUtil.getConvexHull(currentHull.flatMap(_.vertices).distinct)
-      } while (hullSize != currentHull.flatMap(_.vertices).distinct.length)
+    val convexHullOfLift: Vector[PointedAffineSpace] = QuickHullUtil.getConvexHull(liftedPoints) match {
+      case Some(nondegenerateHull) => nondegenerateHull
+      case None =>
+        val lexographicOrderedPoints: Vector[Point] = liftedPoints.sortWith(lexographicLessThan)
 
-      currentHull
+        lexographicOrderedPoints.sliding(dimension+1).map(coords => PointedAffineSpace(coords, _ => 0.0, Point(Vector(-1.0)))).toVector
     }
 
 
@@ -65,8 +84,8 @@ object DelaunayUtil {
 //    println("Normal vectors...")
     val lowerEnvelopeOfLiftedHull: Vector[PointedAffineSpace] = convexHullOfLift.filter((simplex: PointedAffineSpace) => {
 //      println(simplex.normalVector)
-//      simplex.normalVector.last < 0.0
-      simplex.signedDistance(veryLowVector) >= 0.0
+      simplex.normalVector.coordinates.last <= 0.0
+//      simplex.signedDistance(veryLowVector) >= 0.0
     })
 
 //    println("Lower envelope")
