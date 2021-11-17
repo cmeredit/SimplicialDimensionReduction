@@ -22,9 +22,10 @@ object QuickHullUtil {
    *
    *  @see https://www.youtube.com/watch?v=tBE7PfKupZo
    *  @param points The collection of points whose convex hull is to be computed.
-   *  @return The convex hull represented as a collection of simplices.
+   *  @param degeneracyTolerance The tolerance with which we consider distances to be zero.
+   *  @return The convex hull represented as a collection of simplices. If the convex hull is degenerate, return None. Otherwise, return Some(hull).
    */
-  def getConvexHull(points: Vector[Point]): Vector[PointedAffineSpace] = {
+  def getConvexHull(points: Vector[Point], degeneracyTolerance: Double = 0.000001): Option[Vector[PointedAffineSpace]] = {
 
     // Note: This function is referentially transparent despite the use of random initialization and imperative components
     // Emphasize: This code does not have side effects
@@ -53,212 +54,231 @@ object QuickHullUtil {
     // Get a the farthest (absolute) point from that hyperplane
     val vertexOfMaximalAbsoluteDistance: Point = points.diff(startingVertices).maxBy((v: Point) => scala.math.abs(distToStartingVertices(v)))
 
-//    DebugPrinter.print("Starting vertices:")
-//    DebugPrinter.print(startingVertices)
-//    DebugPrinter.print("Vertices and their distances to the starting vertices:")
-//    points.foreach((v: Point) => DebugPrinter.print(v.toString() + " has dist " + scala.math.abs(distToStartingVertices(v))))
 
-    // Our starting vertices and this far extra vertex will define the d+1 simplices of our initial convex hull.
-    val initialHullVertices: Vector[Point] = startingVertices ++ Vector(vertexOfMaximalAbsoluteDistance)
+//    println("Vertex of maximal absolute distance: " + vertexOfMaximalAbsoluteDistance.toString)
+//    println("Distance: " + scala.math.abs(distToStartingVertices(vertexOfMaximalAbsoluteDistance)))
+
+    if (scala.math.abs(distToStartingVertices(vertexOfMaximalAbsoluteDistance)) < degeneracyTolerance)
+      None
+    else {
+
+      //    DebugPrinter.print("Starting vertices:")
+      //    DebugPrinter.print(startingVertices)
+      //    DebugPrinter.print("Vertices and their distances to the starting vertices:")
+      //    points.foreach((v: Point) => DebugPrinter.print(v.toString() + " has dist " + scala.math.abs(distToStartingVertices(v))))
+
+      // Our starting vertices and this far extra vertex will define the d+1 simplices of our initial convex hull.
+      val initialHullVertices: Vector[Point] = startingVertices ++ Vector(vertexOfMaximalAbsoluteDistance)
+
+//      println("Initial hull vertices")
+//      println(initialHullVertices)
+
+      // Todo: Functionalize
+
+      // Stores the simplices that need to be processed. I.e., simplices that might have points above them.
+      var simplicesToProcess: Vector[PointedAffineSpace] = Vector()
+
+      // Initialize the d+1 simplices that make up our initial convex hull guess
+      for (pointToExclude <- initialHullVertices) {
+        val pointsOfThisSimplex: Vector[Point] = initialHullVertices.filter(_ != pointToExclude)
 
 
-    // Todo: Functionalize
+        //      DebugPrinter.print("Point to exclude:")
+        //      DebugPrinter.print(pointToExclude)
+        //      DebugPrinter.print("Points of this simplex:")
+        //      DebugPrinter.print(pointsOfThisSimplex)
 
-    // Stores the simplices that need to be processed. I.e., simplices that might have points above them.
-    var simplicesToProcess: Vector[PointedAffineSpace] = Vector()
+        val (distGuess, normal): (Point => Double, Point) = LinearUtil.getSignedDistAndNormalToHyperplane(pointsOfThisSimplex)
 
-    // Initialize the d+1 simplices that make up our initial convex hull guess
-    for (pointToExclude <- initialHullVertices) {
-      val pointsOfThisSimplex: Vector[Point] = initialHullVertices.filter(_ != pointToExclude)
+        // We want to ensure that the points "above" this simplex are on the opposite side of the simplex from the excluded point.
+        // We also want to recognize points "above" this simplex as points with positive signed distance from the simplex.
+        // Hence, the excluded point should have negative signed distance. If it has positive signed distance, then we need to switch.
+        val shouldNegateDistanceFunc: Boolean = distGuess(pointToExclude) > 0
 
+        val thisSimplex: PointedAffineSpace = PointedAffineSpace(
+          pointsOfThisSimplex,
+          if (shouldNegateDistanceFunc)
+            (v: Point) => -distGuess(v)
+          else
+            distGuess,
+          if (shouldNegateDistanceFunc)
+            normal * -1.0
+          else
+            normal
+        )
 
-//      DebugPrinter.print("Point to exclude:")
-//      DebugPrinter.print(pointToExclude)
-//      DebugPrinter.print("Points of this simplex:")
-//      DebugPrinter.print(pointsOfThisSimplex)
-
-      val (distGuess, normal): (Point => Double, Point) = LinearUtil.getSignedDistAndNormalToHyperplane(pointsOfThisSimplex)
-
-      // We want to ensure that the points "above" this simplex are on the opposite side of the simplex from the excluded point.
-      // We also want to recognize points "above" this simplex as points with positive signed distance from the simplex.
-      // Hence, the excluded point should have negative signed distance. If it has positive signed distance, then we need to switch.
-      val shouldNegateDistanceFunc: Boolean = distGuess(pointToExclude) > 0
-
-      val thisSimplex: PointedAffineSpace = PointedAffineSpace(
-        pointsOfThisSimplex,
-        if (shouldNegateDistanceFunc)
-          (v: Point) => -distGuess(v)
-        else
-          distGuess,
-        if (shouldNegateDistanceFunc)
-          normal * -1.0
-        else
-          normal
-      )
-
-      simplicesToProcess = simplicesToProcess.appended(thisSimplex)
-    }
-
-    val verticesToProcess: Vector[Point] = Random.shuffle(points.diff(simplicesToProcess.flatMap(_.vertices).distinct))
-
-    object ConflictGraph {
-//      private var vertices: Vector[Point] = verticesToProcess
-      private var simplices: Vector[PointedAffineSpace] = simplicesToProcess
-      private var edges: Map[Point, Vector[PointedAffineSpace]] = (for (
-        v <- verticesToProcess;
-        s <- simplices if s.signedDistance(v) >= 0.0
-      ) yield (v, s)).groupBy(_._1).map({case (v, p) => (v, p.map(_._2))})
-
-      def pointIsInConvexHull(p: Point): Boolean = {
-        (!edges.contains(p)) || edges(p).isEmpty
+        simplicesToProcess = simplicesToProcess.appended(thisSimplex)
       }
 
-      def getConflictingSimplices(p: Point): Vector[PointedAffineSpace] = {
-        if (!edges.contains(p))
-          Vector()
-        else
-          edges(p)
-      }
+//      println("Simplices to process")
+//      simplicesToProcess foreach println
 
-      def getConflictingVertices(s: PointedAffineSpace): Vector[Point] = {
-//        edges.filter(_._2.contains(s)).keys.toVector
-        edges.keys.filter(s.signedDistance(_) >= 0.0).toVector
-      }
+      val verticesToProcess: Vector[Point] = Random.shuffle(points.diff(simplicesToProcess.flatMap(_.vertices).distinct))
+//      println("Vertices to process")
 
-      def generateConflictingSimplices(v: Point): Vector[PointedAffineSpace] = {
-        simplices.filter((s: PointedAffineSpace) => s.signedDistance(v) >= 0.0)
-      }
+      object ConflictGraph {
+        //      private var vertices: Vector[Point] = verticesToProcess
+        private var simplices: Vector[PointedAffineSpace] = simplicesToProcess
+        private var edges: Map[Point, Vector[PointedAffineSpace]] = (for (
+          v <- verticesToProcess;
+          s <- simplices if s.signedDistance(v) >= 0.0
+        ) yield (v, s)).groupBy(_._1).map({ case (v, p) => (v, p.map(_._2)) })
 
-      def generateConflictingVertices(s: PointedAffineSpace): Vector[Point] = {
-        edges.keys.filter((v: Point) => s.signedDistance(v) >= 0.0).toVector
-      }
+        def pointIsInConvexHull(p: Point): Boolean = {
+          (!edges.contains(p)) || edges(p).isEmpty
+        }
 
-//      def removeVertex(v: Point): Unit = {
-//        vertices = vertices.filter(_ != v)
-//      }
+        def getConflictingSimplices(p: Point): Vector[PointedAffineSpace] = {
+          if (!edges.contains(p))
+            Vector()
+          else
+            edges(p)
+        }
 
-//      def deleteConflicts(p: Point): Unit = {
-//        if (edges.contains(p)) {
-//          simplices = simplices.diff(edges(p))
-//          edges = edges.updated(p, Vector())
-//        }
-//      }
+        def getConflictingVertices(s: PointedAffineSpace): Vector[Point] = {
+          //        edges.filter(_._2.contains(s)).keys.toVector
+          edges.keys.filter(s.signedDistance(_) >= 0.0).toVector
+        }
 
-      def deleteSimplices(simplicesToRemove: Vector[PointedAffineSpace]): Unit = {
-        simplices = simplices.diff(simplicesToRemove)
-        edges = edges.map({case (v, simps) => (v, simps.diff(simplicesToRemove))}).filter(_._2.nonEmpty)
-      }
+        def generateConflictingSimplices(v: Point): Vector[PointedAffineSpace] = {
+          simplices.filter((s: PointedAffineSpace) => s.signedDistance(v) >= 0.0)
+        }
 
-      def addConflict(p: Point, s: PointedAffineSpace): Unit = {
-        if (edges.contains(p))
-          edges = edges.updated(p, edges(p) ++ Vector(s))
-        else
-          edges = edges.updated(p, Vector(s))
-      }
+        def generateConflictingVertices(s: PointedAffineSpace): Vector[Point] = {
+          edges.keys.filter((v: Point) => s.signedDistance(v) >= 0.0).toVector
+        }
 
-      def getRidges(visibleSimplices: Vector[PointedAffineSpace]): Vector[(PointedAffineSpace, PointedAffineSpace)] = {
-        (for (
-          visibleSimplex <- visibleSimplices;
-          invisibleSimplex <- simplices.diff(visibleSimplices) if {
-//            DebugPrinter.print("Intersection size: " + visibleSimplex.vertices.intersect(invisibleSimplex.vertices).length)
-            visibleSimplex.vertices.intersect(invisibleSimplex.vertices).length == dimension - 1
+        //      def removeVertex(v: Point): Unit = {
+        //        vertices = vertices.filter(_ != v)
+        //      }
+
+        //      def deleteConflicts(p: Point): Unit = {
+        //        if (edges.contains(p)) {
+        //          simplices = simplices.diff(edges(p))
+        //          edges = edges.updated(p, Vector())
+        //        }
+        //      }
+
+        def deleteSimplices(simplicesToRemove: Vector[PointedAffineSpace]): Unit = {
+          simplices = simplices.diff(simplicesToRemove)
+          edges = edges.map({ case (v, simps) => (v, simps.diff(simplicesToRemove)) }).filter(_._2.nonEmpty)
+        }
+
+        def addConflict(p: Point, s: PointedAffineSpace): Unit = {
+          if (edges.contains(p))
+            edges = edges.updated(p, edges(p) ++ Vector(s))
+          else
+            edges = edges.updated(p, Vector(s))
+        }
+
+        def getRidges(visibleSimplices: Vector[PointedAffineSpace]): Vector[(PointedAffineSpace, PointedAffineSpace)] = {
+          (for (
+            visibleSimplex <- visibleSimplices;
+            invisibleSimplex <- simplices.diff(visibleSimplices) if {
+              //            DebugPrinter.print("Intersection size: " + visibleSimplex.vertices.intersect(invisibleSimplex.vertices).length)
+              visibleSimplex.vertices.intersect(invisibleSimplex.vertices).length == dimension - 1
+            }
+          ) yield (visibleSimplex, invisibleSimplex)).distinctBy(p => p._1.vertices.intersect(p._2.vertices).toSet)
+        }
+
+        def createFacet(face: Vector[Point], p: Point): PointedAffineSpace = {
+          val (distGuess, normal): (Point => Double, Point) = LinearUtil.getSignedDistAndNormalToHyperplane(face ++ Vector(p))
+
+          //        val shouldNegateDistance: Boolean = distGuess(pointBelow) >= 0.0
+
+          // The points in the convex hull should all be below.
+          val extremalDistance: Double = simplices.flatMap(_.vertices).map(distGuess).maxBy(scala.math.abs)
+          val shouldNegateDistance: Boolean = extremalDistance >= 0.0
+
+          val trueDistance: Point => Double = if (shouldNegateDistance) (x: Point) => -distGuess(x) else distGuess
+          val trueNormal: Point = if (shouldNegateDistance) normal * -1.0 else normal
+
+          val newFacet: PointedAffineSpace = PointedAffineSpace(face ++ Vector(p), trueDistance, trueNormal)
+
+          newFacet
+        }
+
+        def processPoint(pointToProcess: Point): Unit = {
+          if (edges.contains(pointToProcess)) {
+
+            //        println("Convex hull currently contains " + simplices.length + " simplices")
+            //        println("There are still " + edges.keys.toVector.length + " vertices outside of the hull.")
+
+            val conflicts: Vector[PointedAffineSpace] = generateConflictingSimplices(pointToProcess) //edges(pointToProcess)
+            val ridges: Vector[(PointedAffineSpace, PointedAffineSpace)] = getRidges(conflicts)
+
+            ridges.foreach { case (visibleSimplex, invisibleSimplex) =>
+              val intersectionPoints: Vector[Point] = visibleSimplex.vertices.intersect(invisibleSimplex.vertices)
+
+              val newFacet: PointedAffineSpace = ConflictGraph.createFacet(intersectionPoints, pointToProcess)
+
+              val candidateConflicts: Vector[Point] = getConflictingVertices(visibleSimplex) ++ getConflictingVertices(invisibleSimplex)
+
+              simplices = simplices.appended(newFacet)
+
+              candidateConflicts.foreach((candidate: Point) => {
+                if (newFacet.signedDistance(candidate) >= 0.0)
+                  edges = edges.updated(candidate, edges(candidate) ++ Vector(newFacet))
+              })
+
+            }
+
+            edges = edges.removed(pointToProcess)
+            edges = edges.map({ case (v, c) => (v, c.diff(conflicts)) }).filter(_._2.nonEmpty)
+            simplices = simplices.diff(conflicts)
+
           }
-        ) yield (visibleSimplex, invisibleSimplex)).distinctBy(p => p._1.vertices.intersect(p._2.vertices).toSet)
-      }
+        }
 
-      def createFacet(face: Vector[Point], p: Point): PointedAffineSpace = {
-        val (distGuess, normal): (Point => Double, Point) = LinearUtil.getSignedDistAndNormalToHyperplane(face ++ Vector(p))
+        def getSimplices: Vector[PointedAffineSpace] = simplices
 
-//        val shouldNegateDistance: Boolean = distGuess(pointBelow) >= 0.0
+        def print(): Unit = {
 
-        // The points in the convex hull should all be below.
-        val extremalDistance: Double = simplices.flatMap(_.vertices).map(distGuess).maxBy(scala.math.abs)
-        val shouldNegateDistance: Boolean = extremalDistance >= 0.0
+          def makeReadable(v: Point): String = v match {
+            case Point(Vector(0.0, 0.0, 1.0)) => "A"
+            case Point(Vector(0.0, 0.0, 0.0)) => "B"
+            case Point(Vector(-1.0, -1.0, -1.0)) => "C"
+            case Point(Vector(-1.0, 1.0, -1.0)) => "D"
+            case Point(Vector(1.0, -1.0, -1.0)) => "E"
+            case Point(Vector(1.0, 1.0, -1.0)) => "F"
+            case any: Point => any.toString()
+          }
 
-        val trueDistance: Point => Double = if (shouldNegateDistance) (x: Point) => -distGuess(x) else distGuess
-        val trueNormal: Point = if (shouldNegateDistance) normal * -1.0 else normal
-
-        val newFacet: PointedAffineSpace = PointedAffineSpace(face ++ Vector(p), trueDistance, trueNormal)
-
-        newFacet
-      }
-
-      def processPoint(pointToProcess: Point): Unit = {if (edges.contains(pointToProcess)) {
-
-//        println("Convex hull currently contains " + simplices.length + " simplices")
-//        println("There are still " + edges.keys.toVector.length + " vertices outside of the hull.")
-
-        val conflicts: Vector[PointedAffineSpace] = generateConflictingSimplices(pointToProcess)//edges(pointToProcess)
-        val ridges: Vector[(PointedAffineSpace, PointedAffineSpace)] = getRidges(conflicts)
-
-        ridges.foreach {case (visibleSimplex, invisibleSimplex) =>
-          val intersectionPoints: Vector[Point] = visibleSimplex.vertices.intersect(invisibleSimplex.vertices)
-
-          val newFacet: PointedAffineSpace = ConflictGraph.createFacet(intersectionPoints, pointToProcess)
-
-          val candidateConflicts: Vector[Point] = getConflictingVertices(visibleSimplex) ++ getConflictingVertices(invisibleSimplex)
-
-          simplices = simplices.appended(newFacet)
-
-          candidateConflicts.foreach((candidate: Point) => {
-            if (newFacet.signedDistance(candidate) >= 0.0)
-              edges = edges.updated(candidate, edges(candidate) ++ Vector(newFacet))
+          DebugPrinter.print("")
+          DebugPrinter.print("Printing conflict graph ============================================================================================================================================================")
+          DebugPrinter.print("")
+          DebugPrinter.print("Vertices:")
+          edges.keys foreach { v => DebugPrinter.print(makeReadable(v)) }
+          DebugPrinter.print("")
+          DebugPrinter.print("Simplices:")
+          simplices foreach { (simplex: PointedAffineSpace) => DebugPrinter.print(simplex.vertices.map(makeReadable)) }
+          DebugPrinter.print("")
+          DebugPrinter.print("Conflict graph:")
+          edges foreach { case (v, conflicts) => DebugPrinter.print(makeReadable(v) + " : " + {
+            if (conflicts.nonEmpty) conflicts.map(s => s.vertices.map(makeReadable).reduce(_ + ", " + _)).reduce(_ + " ~~~~ " + _) else ""
           })
-
+          }
+          DebugPrinter.print("")
+          DebugPrinter.print("====================================================================================================================================================================================")
+          DebugPrinter.print("")
         }
 
-        edges = edges.removed(pointToProcess)
-        edges = edges.map({case (v, c) => (v, c.diff(conflicts))}).filter(_._2.nonEmpty)
-        simplices = simplices.diff(conflicts)
-
-      }}
-
-      def getSimplices: Vector[PointedAffineSpace] = simplices
-
-      def print(): Unit = {
-
-        def makeReadable(v: Point): String = v match {
-          case Point(Vector(0.0, 0.0, 1.0)) => "A"
-          case Point(Vector(0.0, 0.0, 0.0)) => "B"
-          case Point(Vector(-1.0, -1.0, -1.0)) => "C"
-          case Point(Vector(-1.0, 1.0, -1.0)) => "D"
-          case Point(Vector(1.0, -1.0, -1.0)) => "E"
-          case Point(Vector(1.0, 1.0, -1.0)) => "F"
-          case any: Point => any.toString()
-        }
-
-        DebugPrinter.print("")
-        DebugPrinter.print("Printing conflict graph ============================================================================================================================================================")
-        DebugPrinter.print("")
-        DebugPrinter.print("Vertices:")
-        edges.keys foreach {v => DebugPrinter.print(makeReadable(v))}
-        DebugPrinter.print("")
-        DebugPrinter.print("Simplices:")
-        simplices foreach {(simplex: PointedAffineSpace) => DebugPrinter.print(simplex.vertices.map(makeReadable))}
-        DebugPrinter.print("")
-        DebugPrinter.print("Conflict graph:")
-        edges foreach {case (v, conflicts) => DebugPrinter.print(makeReadable(v) + " : " + {if (conflicts.nonEmpty) conflicts.map(s => s.vertices.map(makeReadable).reduce(_ + ", " + _)).reduce(_ + " ~~~~ " + _) else ""})}
-        DebugPrinter.print("")
-        DebugPrinter.print("====================================================================================================================================================================================")
-        DebugPrinter.print("")
       }
 
+      verticesToProcess.zipWithIndex.foreach({ case (currentVertex: Point, index: Int) =>
+
+        //      println("Working on vertex " + index + " out of " + verticesToProcess.length)
+
+        ConflictGraph.processPoint(currentVertex)
+
+      })
+
+      DebugPrinter.print("Done processing vertices")
+
+      ConflictGraph.print()
+
+      Some(ConflictGraph.getSimplices)
     }
-
-    verticesToProcess.zipWithIndex.foreach({case (currentVertex: Point, index: Int) =>
-
-      //      println("Working on vertex " + index + " out of " + verticesToProcess.length)
-
-      ConflictGraph.processPoint(currentVertex)
-
-    })
-
-    DebugPrinter.print("Done processing vertices")
-
-    ConflictGraph.print()
-
-    ConflictGraph.getSimplices
-
   }
 
 }
@@ -309,7 +329,10 @@ object Test extends App {
     }).toVector
 
 
-    val convexHull: Vector[PointedAffineSpace] = QuickHullUtil.getConvexHull(randomCirclePoints)
+    val convexHull: Vector[PointedAffineSpace] = QuickHullUtil.getConvexHull(randomCirclePoints) match {
+      case Some(h) => h
+      case None => Vector()
+    }
 
     val convexHullPoints2: Vector[Point] = convexHull.flatMap(_.vertices).distinct
     val innerPoints2: Vector[Point] = randomCirclePoints.filter((p: Point) => !convexHullPoints2.contains(p))
@@ -333,7 +356,10 @@ object QuickHullTest extends App {
   val oneDimPoints: Vector[Point] = (0 until 10).map(_ => Vector(random() * 2.0 - 1.0)).toVector.map(Point)
   val parabolicPoints = oneDimPoints.map(p => Point(p.coordinates ++ Vector(p.head * p.head)))
 
-  val hullSimplices: Vector[PointedAffineSpace] = QuickHullUtil.getConvexHull(parabolicPoints)
+  val hullSimplices: Vector[PointedAffineSpace] = QuickHullUtil.getConvexHull(parabolicPoints)match {
+    case Some(h) => h
+    case None => Vector()
+  }
 
   parabolicPoints.foreach(p =>
     println("(" + p.map(_.toString).reduce(_ + ", " + _) + ")")
@@ -367,32 +393,6 @@ object QuickHullTest extends App {
 
 
   })
-
-}
-
-
-
-object QuickHullTest2 extends App {
-  val points: Vector[Point] = (1 to 100).map(_ => Vector(random(), random(), random())).toVector.map(Point)
-
-  val convexHull: Vector[PointedAffineSpace] = QuickHullUtil.getConvexHull(points)
-
-  val convexHullVertices: Vector[Point] = convexHull.flatMap(_.vertices).distinct
-  val interiorVertices: Vector[Point] = points.diff(convexHullVertices)
-
-
-  val convexHullOfConvexHull: Vector[PointedAffineSpace] = QuickHullUtil.getConvexHull(convexHullVertices)
-  val ccVertices: Vector[Point] = convexHullOfConvexHull.flatMap(_.vertices).distinct
-  val cccVertices: Vector[Point] = QuickHullUtil.getConvexHull(ccVertices).flatMap(_.vertices).distinct
-  val ccccVertices: Vector[Point] = QuickHullUtil.getConvexHull(cccVertices).flatMap(_.vertices).distinct
-  val cccccVertices: Vector[Point] = QuickHullUtil.getConvexHull(ccccVertices).flatMap(_.vertices).distinct
-
-  println("Number of points in convex hull: " + convexHullVertices.length)
-  println("Number of points in convex hull of convex hull: " + ccVertices.length)
-  println("Number of CCC vertices..." + cccVertices.length)
-  println("Number of CCCC vertices..." + ccccVertices.length)
-  println("Number of CCCCC vertices..." + cccccVertices.length)
-
 
 }
 
