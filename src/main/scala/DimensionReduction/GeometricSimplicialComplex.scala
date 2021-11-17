@@ -51,7 +51,7 @@ class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace],
   // as this would contradict maximality. Therefore, copying in component spaces yields all simplices of maximal dimension. This argument cannot be applied to
   // simplices of lower dimension as these are perhaps proper faces of component spaces that are not themselves component spaces. For that reason, we need to
   // come up with an update process to incorporate them.
-  private val initSimplexMap: Map[Int, Vector[Simplex]] = componentSpaces.groupBy(_.vertices.length - 1).map({case (k, v) => (k, v.map(new Simplex(_)))})
+  private val initSimplexMap: Map[Int, Vector[Simplex]] = componentSpaces.groupBy(_.vertices.length - 1).map({case (k, v) => (k, v.map(new Simplex(_)))}).withDefaultValue(Vector())
 
   // Assume: We've already correctly found all n-simplices with n > nextSimplexDimension. This update step should correctly yield the (nextSimplexDimension)-simplices,
   // I.e., after this update step, our map should correctly contain all n-simplices with n >= nextSimplexDimension.
@@ -68,21 +68,21 @@ class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace],
     // Get all subsets of vertices of simplices of dimension (nextSimplexDimension+1). Even though we are storing these subsets as vectors,
     // we don't want to be affected by order, so take this collection distinctBy a set representation.
     // Also, two simplices might intersect at a face, so we don't want to double (or many-times) add this intersection.
-    val faceVerticesFromHigherSimplices: Vector[Vector[Point]] = simplicesOfDimPlusOne.flatMap((simplex: Simplex) => {
-      simplex.points.combinations(nextSimplexDimension)
+    val faceVerticesFromHigherSimplices: Vector[Set[Point]] = simplicesOfDimPlusOne.flatMap((simplex: Simplex) => {
+      simplex.points.toVector.combinations(nextSimplexDimension+1).map(_.toSet)
     }).toVector.distinctBy(_.toSet)
 
     // We only want to build a new simplex from a vector of points that is *actually* new. I.e., some of these sets we find
     // might already be represented in the simplicial complex. Filter out the collections of points whose set representation is already present.
-    val newVertices: Vector[Vector[Point]] = faceVerticesFromHigherSimplices.filter((candidatePoints: Vector[Point]) => {
+    val newVertices: Vector[Set[Point]] = faceVerticesFromHigherSimplices.filter((candidatePoints: Set[Point]) => {
       val currentSimplicesOfThisDimension: Vector[Simplex] = currentSimplexMap(nextSimplexDimension)
 
       // We don't want to include this set of candidates if there already exists a simplex of this dimension with the candidate set as its vertex set.
-      !currentSimplicesOfThisDimension.exists((simplexOfThisDim: Simplex) => simplexOfThisDim.points.toSet == candidatePoints.toSet)
+      !currentSimplicesOfThisDimension.exists((simplexOfThisDim: Simplex) => simplexOfThisDim.points == candidatePoints)
     })
 
     // Now that we've identified the vertex sets that are truly new, we'll build new simplices out of them.
-    val newSimplices: Vector[Simplex] = newVertices.map(new Simplex(_))
+    val newSimplices: Vector[Simplex] = newVertices.map(Simplex)
 
     // The updated map is now just the previous map with the new simplices appended in the right place...
     currentSimplexMap.updated(nextSimplexDimension, currentSimplexMap(nextSimplexDimension) ++ newSimplices)
@@ -105,17 +105,17 @@ class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace],
 
   /** Maps a simplex to all of its faces. */
   val faceMap: Map[Simplex, Vector[Simplex]] = simplices.map((simplex: Simplex) => {
-    (simplex, simplices.filter((candidateFace: Simplex) => candidateFace.points.toSet.subsetOf(simplex.points.toSet)))
+    (simplex, simplices.filter((candidateFace: Simplex) => candidateFace.points.subsetOf(simplex.points)))
   }).toMap
 
   /** Maps a number n and a simplex s to the collection of n-faces of s. */
   val nFaceMap: Map[(Int, Simplex), Vector[Simplex]] = simplices.zip(0 to maxComponentDimension).map({case (simplex, n) =>
-    ((n, simplex), simplices.filter((candidateFace: Simplex) => candidateFace.points.toSet.subsetOf(simplex.points.toSet) && candidateFace.points.length == n))
+    ((n, simplex), simplices.filter((candidateFace: Simplex) => candidateFace.points.subsetOf(simplex.points) && candidateFace.points.size == n))
   }).toMap
 
   /** Maps a simplex to the collection of simplices that contain it. */
   val ancestorMap: Map[Simplex, Vector[Simplex]] = simplices.map((simplex: Simplex) => {
-    (simplex, simplices.filter((candidateParent: Simplex) => simplex.points.toSet.subsetOf(candidateParent.points.toSet)))
+    (simplex, simplices.filter((candidateParent: Simplex) => simplex.points.subsetOf(candidateParent.points)))
   }).toMap
 
   def getComplexWithout(simplicesToExclude: Vector[Simplex]): GeometricSimplicialComplex = {
