@@ -63,7 +63,7 @@ object Main extends App {
 
         var currentPoints: Vector[Point] = points
         var previousNumPoints: Int = currentPoints.length
-        var currentHull: Vector[PointedAffineSpace] = QuickHullUtil.getConvexHull(currentPoints)
+        var currentHull: Vector[PointedAffineSpace] = QuickHullUtil.getConvexHull(currentPoints).getOrElse(Vector())
         var currentNumPoints: Int = currentPoints.length
 
         do {
@@ -71,7 +71,7 @@ object Main extends App {
 
           currentPoints = currentHull.flatMap(_.vertices).distinct
 
-          currentHull = QuickHullUtil.getConvexHull(currentPoints)
+          currentHull = QuickHullUtil.getConvexHull(currentPoints).getOrElse(Vector())
 
           currentNumPoints = currentHull.flatMap(_.vertices).distinct.length
         } while (currentNumPoints != previousNumPoints)
@@ -104,7 +104,7 @@ object Main extends App {
 
         }).toVector.map(Point)
 
-        val convexHull: Vector[PointedAffineSpace] = QuickHullUtil.getConvexHull(points)
+        val convexHull: Vector[PointedAffineSpace] = QuickHullUtil.getConvexHull(points).getOrElse(Vector())
 
         val convexHullVertices: Vector[Point] = convexHull.flatMap(_.vertices)
         val interiorVertices: Vector[Vector[Float]] = points.diff(convexHullVertices).map(_.map(_.toFloat))
