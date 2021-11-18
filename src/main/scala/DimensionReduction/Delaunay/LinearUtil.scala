@@ -186,14 +186,14 @@ object LinearUtil {
 
     val m2Transpose: Vector[Vector[Rational]] = m2.transpose
 
-    val m1Rows: Int = m1.length
-    val m2Cols: Int = m2Transpose.length
+    val m1Cols: Int = m1.head.length
+    val m2Rows: Int = m2.length
 
-    assert(m1Rows == m2Cols)
+    assert(m1Cols == m2Rows)
 
-    val prod: Vector[Vector[Rational]] = (0 until m1Rows).map(i => {(0 until m1Rows).map(j => {
-      m1(i).zip(m2Transpose(j)).map({case (a, b) => a * b}).reduce(_ + _)
-    }).toVector}).toVector
+    val prod: Vector[Vector[Rational]] = m1.map(row => {m2Transpose.map(col => {
+      row.zip(col).map({case (a, b) => a * b}).reduce(_ + _)
+    })})
 
     prod
 
