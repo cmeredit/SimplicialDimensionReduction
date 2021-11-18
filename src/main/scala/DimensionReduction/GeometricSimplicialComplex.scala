@@ -29,7 +29,8 @@ import DimensionReduction.Delaunay.PointedAffineSpace
  *
  */
 class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace],
-                                 forcedNSimplices: Option[Map[Int,Vector[Simplex]]] = None) {
+                                 forcedNSimplices: Option[Map[Int,Vector[Simplex]]] = None,
+                                 forcedNFaceMap: Option[Map[(Int, Simplex),Vector[Simplex]]] = None) {
 
   /** The highest inherent dimension of any simplex in the complex.
    *  This is also the lowest dimension of a Euclidean space into which the complex can be embedded
@@ -103,6 +104,27 @@ class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace],
   /** The simplices of the complex. */
   val simplices: Vector[Simplex] = nSimplices.values.flatten.toVector
 
+  println("Computing n face map")
+  /** Maps a number n and a simplex s to the collection of n-faces of s. */
+  val nFaceMap: Map[(Int, Simplex), Vector[Simplex]] = forcedNFaceMap match {
+    case Some(forced) => forced
+    case None =>
+      {
+        for (
+          simplex <- simplices;
+          n <- 0 to maxComponentDimension
+        ) yield  {(
+            (n, simplex), // Key
+            simplex // Start with the simplex in the key
+              .points // Look at its points
+              .subsets(n+1) // Take n+1 at a time (an n-simplex has n+1 vertices)
+              .flatMap(subset => simplices.find(_.points == subset)) // Try to find the simplex that has the given subset as its vertex set
+              .toVector // Collect all these into a vector
+        )}
+      }.toMap
+  }
+
+  println("Computing face map")
   /** Maps a simplex to all of its faces. */
   val faceMap: Map[Simplex, Vector[Simplex]] = simplices.map((simplex: Simplex) => {
     (simplex, simplices.filter((candidateFace: Simplex) => candidateFace.points.subsetOf(simplex.points)))
