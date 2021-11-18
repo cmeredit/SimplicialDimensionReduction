@@ -199,6 +199,16 @@ object LinearUtil {
 
   }
 
+  def getProjectionMatrix(basis: Vector[Vector[Rational]]): Vector[Vector[Rational]] = {
+
+    val A: Vector[Vector[Rational]] = basis.transpose
+
+    val center: Vector[Vector[Rational]] = getInverse(matrixMult(A.transpose, A)).get
+
+    matrixMult(matrixMult(A, center), A.transpose)
+
+  }
+
   /** Tests if the given points lie on a hyperplane of codimension 1 */
   def doPointsDefineAHyperplaneOfCodimensionOne(points: Vector[Point]): Boolean = {
     if (points.isEmpty) // No points
