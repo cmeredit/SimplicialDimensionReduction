@@ -153,6 +153,35 @@ object LinearUtil {
     diagonalEntries.reduce(_ * _).abs
   }
 
+  def getInverse(matrix: Vector[Vector[Rational]]): Option[Vector[Vector[Rational]]] = {
+    assert(matrix.nonEmpty)
+    assert(matrix.head.nonEmpty)
+    assert(matrix.head.length == matrix.length)
+    assert(matrix.distinctBy(_.length).distinct.length == 1)
+
+    val absoluteDeterminant = getAbsoluteDeterminant(matrix)
+
+    if (absoluteDeterminant == Rational(0.0)) {
+      None
+    } else {
+
+      val dimension: Int = matrix.length
+
+      val identityMatrix: Vector[Vector[Rational]] = (0 until dimension).map(n => {
+        Vector.fill(n)(Rational(0.0)) ++ Vector(Rational(1.0)) ++ Vector.fill(dimension-n-1 max 0)(Rational(0.0))
+      }).toVector
+
+      val concatenatedMatrices: Vector[Vector[Rational]] = matrix.zip(identityMatrix).map({case (matRow, identRow) => matRow ++ identRow})
+
+      val concatenatedRREF: Vector[Vector[Rational]] = getRREF(concatenatedMatrices)
+
+      val inverse: Vector[Vector[Rational]] = concatenatedRREF.map(_.drop(dimension))
+
+      Some(inverse)
+
+    }
+  }
+
   /** Tests if the given points lie on a hyperplane of codimension 1 */
   def doPointsDefineAHyperplaneOfCodimensionOne(points: Vector[Point]): Boolean = {
     if (points.isEmpty) // No points
