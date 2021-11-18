@@ -40,7 +40,7 @@ object Main extends App {
   private var firstMouse: Boolean = true
 
 
-  private lazy val iris: (Vector[Vector[Float]], Vector[Vector[Float]]) = IrisLoader.getIrisData
+  private lazy val iris: (Vector[Vector[Float]], Vector[Vector[Float]]) = IrisLoader.getIrisData()
 
 
 
