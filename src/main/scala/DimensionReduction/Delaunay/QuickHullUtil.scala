@@ -267,7 +267,8 @@ object QuickHullUtil {
 
       verticesToProcess.zipWithIndex.foreach({ case (currentVertex: Point, index: Int) =>
 
-        //      println("Working on vertex " + index + " out of " + verticesToProcess.length)
+        println("Working on vertex " + index + " out of " + verticesToProcess.length)
+        println("Working on " + currentVertex)
 
         ConflictGraph.processPoint(currentVertex)
 
