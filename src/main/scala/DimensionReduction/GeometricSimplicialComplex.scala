@@ -129,18 +129,77 @@ class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace],
   println("Computing face map")
   /** Maps a simplex to all of its faces. */
   val faceMap: Map[Simplex, Vector[Simplex]] = simplices.map((simplex: Simplex) => {
-    (simplex, simplices.filter((candidateFace: Simplex) => candidateFace.points.subsetOf(simplex.points)))
-  }).toMap
 
-  /** Maps a number n and a simplex s to the collection of n-faces of s. */
-  val nFaceMap: Map[(Int, Simplex), Vector[Simplex]] = simplices.zip(0 to maxComponentDimension).map({case (simplex, n) =>
-    ((n, simplex), simplices.filter((candidateFace: Simplex) => candidateFace.points.subsetOf(simplex.points) && candidateFace.points.size == n))
+    (simplex, (0 to maxComponentDimension).map(n => nFaceMap(n, simplex)).reduce(_ ++ _))
+
   }).toMap
+  println("Computing ancestor map")
 
   /** Maps a simplex to the collection of simplices that contain it. */
-  val ancestorMap: Map[Simplex, Vector[Simplex]] = simplices.map((simplex: Simplex) => {
-    (simplex, simplices.filter((candidateParent: Simplex) => simplex.points.subsetOf(candidateParent.points)))
-  }).toMap
+  val ancestorMap: Map[Simplex, Vector[Simplex]] = {
+
+    val mutableAncestorMap: scala.collection.mutable.Map[Simplex, Vector[Simplex]] = scala.collection.mutable.Map() ++ simplices.map(simplex => (simplex, Vector[Simplex]())).toMap
+
+    simplices.foreach(simplex => {
+      val descendents: Vector[Simplex] = faceMap(simplex)
+      descendents.foreach(descendent => mutableAncestorMap.update(descendent, mutableAncestorMap(descendent) :+ simplex))
+    })
+
+
+//    (simplex, simplices.filter((candidateParent: Simplex) => simplex.points.subsetOf(candidateParent.points)))
+    Map() ++ mutableAncestorMap
+  }
+
+  def printStatistics(numBins: Int = 20): Unit = {
+
+    val edgeLengths: Vector[Double] = nSimplices(1).flatMap(simplex => {
+      val pts = simplex.points.toVector
+      pts(0).dist(pts(1))
+    })
+
+    def makeHistogram(values: Vector[Double]): Vector[((Double, Double), Int)] = {
+
+      val minValue = values.min
+      val maxValue = values.max
+
+      val binSize = (maxValue - minValue) / numBins
+
+      def getBinCoordinates(v: Double): (Double, Double) = {
+        val idx: Double = ((v-minValue) / binSize).floor
+
+        (minValue + binSize * idx, minValue + binSize * (idx + 1.0))
+      }
+
+      values.groupBy(getBinCoordinates).toVector.map(p => (p._1, p._2.length)).sortBy(_._1._1)
+
+    }
+
+
+    val edgeHist: Vector[((Double, Double), Int)] = makeHistogram(edgeLengths)
+    val heaviestBinWeight: Int = edgeHist.maxBy(_._2)._2
+
+    val minEdgeLength: Double = edgeLengths.min
+    val maxEdgeLength: Double = edgeLengths.max
+    val meanEdgeLength: Double = edgeLengths.sum / edgeLengths.length.toDouble
+    val medianEdgeLength: Double = edgeLengths(edgeLengths.length / 2)
+
+    val sseEdgeLength: Double = edgeLengths.map(length => (length - meanEdgeLength) * (length - meanEdgeLength)).sum
+    val standardDevEdgeLength: Double = scala.math.sqrt(sseEdgeLength / edgeLengths.length.toDouble)
+
+    println("")
+    println("Minimum edge length: " + minEdgeLength)
+    println("Mean edge length: " + meanEdgeLength)
+    println("Standard dev edge length: " + standardDevEdgeLength)
+    println("Median edge length: " + medianEdgeLength)
+    println("Maximum edge length: " + maxEdgeLength)
+    println("")
+    println("Histogram of edge lengths:")
+    edgeHist foreach println
+    println("")
+    println("Histogram as line graph normalized to heaviest bin:")
+    edgeHist.foreach(datum => println((datum._1._1 + datum._1._2) / 2.0 + ", " + (datum._2.toDouble / heaviestBinWeight.toDouble)))
+    println("")
+  }
 
   def getComplexWithout(simplicesToExclude: Vector[Simplex]): GeometricSimplicialComplex = {
 
