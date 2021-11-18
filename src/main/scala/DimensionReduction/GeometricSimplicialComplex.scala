@@ -154,4 +154,254 @@ class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace],
     new GeometricSimplicialComplex(Vector(), Some(newNSimplices))
   }
 
+
+  def exportToFile(filename: String): Unit = {
+    import java.io._
+
+    val file = new File(filename)
+    val bw = new BufferedWriter(new FileWriter(file))
+
+    val simplicesWithIndex: Vector[(Simplex, Int)] = simplices.zipWithIndex
+
+    def brittleSimplexToString(simplex: Simplex): String = {
+      simplex.points.toVector.map(point => point.coordinates.map(_.toString).reduce(_ + "," + _)).reduce(_ + "|" + _)
+    }
+
+    simplicesWithIndex.foreach(pair => bw.write(brittleSimplexToString(pair._1) + ":" + pair._2.toString + "\n"))
+
+    val simplexMap: Map[Simplex, Int] = simplicesWithIndex.toMap
+
+    bw.write("Face Map\n")
+
+//    faceMap.foreach(pair => bw.write(simplexMap(pair._1) + "->" + pair._2.map(simplexMap).map(_.toString).reduce(_ + "," + _) + "\n"))
+
+    bw.write(faceMap.map(pair => simplexMap(pair._1) + "->" + pair._2.map(simplexMap).map(_.toString).reduce(_ + "," + _)).reduce(_ + "\n" + _))
+
+    bw.close()
+  }
+
+}
+
+object GeometricSimplicialComplex {
+
+  def loadFromFile(filename: String,
+                   faceMapLine: String = "Face Map",
+                   faceMapPrimarySep: String = "->",
+                   faceMapIndexSep: String = ",",
+                   pointSep: String = "\\|",
+                   pointInternalSep: String = ",",
+                   simplexIndexSep: String = ":"): Option[GeometricSimplicialComplex] = {
+
+    val bufferedComplexSource: BufferedSource = Source.fromFile(filename)
+    val lines = bufferedComplexSource.getLines().toVector
+
+    val faceIndex: Option[Int] = lines.zipWithIndex.find(_._1 == faceMapLine).map(_._2)
+
+    faceIndex match {
+      case Some(index) =>
+        val (simplexLines, faceMapLines) = {
+//          println("Face index:")
+//          println(faceIndex)
+//          println(index)
+          val split = lines.splitAt(index)
+
+          val split1Vector = split._1
+          val split2Vector = split._2
+
+//          println("Split 1 first")
+//          println(split1Vector.head)
+//          println("Split 1 last")
+//          println(split1Vector.last)
+//          println("Split 2 first and second")
+//          split2Vector.take(2) foreach println
+
+          (split1Vector, split2Vector.tail)
+        }
+
+        val simplexIndexMap: Map[Int, Simplex] = simplexLines.map((simplexString: String) => {
+
+          val (pointsString, indexString) = {
+            val split = simplexString.split(simplexIndexSep)
+//            println("Original:")
+//            println(simplexString)
+//            println("Split:")
+//            split foreach println
+            (split(0), split(1))
+          }
+
+          val index: Int = indexString.toInt
+
+          val pointStrings = pointsString.split(pointSep)
+
+//          println("Points string")
+//          println(pointsString)
+//          println("Sep")
+//          println(pointSep)
+//          println("Point strings")
+//          pointStrings foreach println
+
+          val points: Set[Point] = pointStrings.map(str => {
+//            println("Point string")
+//            println(str)
+            Point(str.split(pointInternalSep).map(_.toDouble).toVector)
+          }).toSet
+
+          val simplex: Simplex = Simplex(points)
+
+          (index, simplex)
+        }).toMap
+
+        val simplices = simplexIndexMap.values
+
+        val nSimplexMap: Map[Int, Vector[Simplex]] = simplices.groupBy(_.points.size).map(p => (p._1 - 1, p._2.toVector))
+
+        val faceMap: Map[Simplex, Vector[Simplex]] = faceMapLines.map(str => {
+          val (keyString, valueString) = {
+            val split = str.split(faceMapPrimarySep)
+            (split(0), split(1))
+          }
+
+          val key: Simplex = simplexIndexMap(keyString.toInt)
+          val values: Vector[Simplex] = valueString.split(faceMapIndexSep).map(indexStr => simplexIndexMap(indexStr.toInt)).toVector
+
+          (key, values)
+        }).toMap
+
+        val maxSimplexDimension: Int = simplices.map(_.points.size).max - 1
+
+//        println("Max simplex dimension")
+//        println(maxSimplexDimension)
+//        assert(false)
+
+        val nFaceMap: Map[(Int, Simplex), Vector[Simplex]] = {for (
+          n <- 0 to maxSimplexDimension;
+          simplex <- simplices
+        ) yield (
+          (n, simplex),
+          faceMap(simplex).filter(_.points.size == n+1)
+        )}.toMap
+
+
+        bufferedComplexSource.close()
+
+        Some(new GeometricSimplicialComplex(Vector(), Some(nSimplexMap), Some(nFaceMap)))
+      case None =>
+        bufferedComplexSource.close()
+        None
+    }
+  }
+
+}
+
+
+
+object LoadTest extends App {
+
+  println("Loading...")
+
+  val loadedGeomComp: Option[GeometricSimplicialComplex] = GeometricSimplicialComplex.loadFromFile("Datasets/UnculledNormalizedIrisComplex.txt")
+
+  println("Loaded!")
+
+  println(loadedGeomComp)
+
+
+  loadedGeomComp match {
+    case Some(complex) =>
+      complex.printStatistics(30)
+    case None =>
+      println("Red alert! Failed to load simplicial complex from file!")
+  }
+
+
+
+  val culledGeomComp: Option[GeometricSimplicialComplex] = GeometricSimplicialComplex.loadFromFile("Datasets/CulledNormalizedIrisComplex.txt")
+
+  culledGeomComp match {
+    case Some(complex) =>
+      complex.printStatistics(8)
+    case None =>
+      println("Red alert! Failed to load simplicial complex from file!")
+  }
+
+
+}
+
+
+
+object GeometricSimplicialComplexTest extends App {
+
+  val points: Vector[Point] = Vector(
+    Point(Vector(0.0, 0.0, 0.0)),
+    Point(Vector(1.0, 0.0, 0.0)),
+    Point(Vector(0.0, 1.0, 0.0)),
+    Point(Vector(0.0, 0.0, 1.0)),
+    Point(Vector(1.0, 1.0, 1.0))
+  )
+
+  val pointNames: Point => String = {
+    case Point(Vector(0.0, 0.0, 0.0)) => "O"
+    case Point(Vector(1.0, 0.0, 0.0)) => "X"
+    case Point(Vector(0.0, 1.0, 0.0)) => "Y"
+    case Point(Vector(0.0, 0.0, 1.0)) => "Z"
+    case Point(Vector(1.0, 1.0, 1.0)) => "S"
+    case _ => "Unknown Point"
+  }
+
+  val delaunay: Vector[PointedAffineSpace] = Delaunay.DelaunayUtil.getDelaunaySimplicialization(points)
+
+  delaunay.foreach((space: PointedAffineSpace) => {
+    println("(" + space.vertices.map(pointNames).reduce(_ + ", " + _) + ")")
+  })
+
+  val simplicialization: GeometricSimplicialComplex = new GeometricSimplicialComplex(delaunay)
+
+  println(simplicialization)
+
+  simplicialization.nSimplices foreach { case (n, nSimplices) =>
+    println(n + "-Simplices:")
+    nSimplices.foreach((simplex: Simplex) =>
+      println(if (simplex.points.nonEmpty) {"[" + simplex.points.map(pointNames).reduce(_ + ", " + _) + "]"} else "[]")
+    )
+  }
+
+}
+
+
+object GeometricSimplicialComplexTest2 extends App {
+
+  val points: Vector[Point] = Vector(
+    Point(Vector(0.0, 0.0)),
+    Point(Vector(3.0, 4.0)),
+    Point(Vector(4.0, 3.0)),
+    Point(Vector(0.0, 25.0/7.0)),
+  )
+
+  val k = 25.0 / 7.0
+
+  val pointNames: Point => String = {
+    case Point(Vector(0.0, 0.0)) => "O"
+    case Point(Vector(3.0, 4.0)) => "Y"
+    case Point(Vector(4.0, 3.0)) => "X"
+    case Point(Vector(0.0, k)) => "S"
+    case _ => "Unknown Point"
+  }
+
+  val delaunay: Vector[PointedAffineSpace] = Delaunay.DelaunayUtil.getDelaunaySimplicialization(points)
+
+  delaunay.foreach((space: PointedAffineSpace) => {
+    println("(" + space.vertices.map(pointNames).reduce(_ + ", " + _) + ")")
+  })
+
+  val simplicialization: GeometricSimplicialComplex = new GeometricSimplicialComplex(delaunay)
+
+  println(simplicialization)
+
+  simplicialization.nSimplices foreach { case (n, nSimplices) =>
+    println(n + "-Simplices:")
+    nSimplices.foreach((simplex: Simplex) =>
+      println(if (simplex.points.nonEmpty) {"[" + simplex.points.map(pointNames).reduce(_ + ", " + _) + "]"} else "[]")
+    )
+  }
+
 }
