@@ -52,6 +52,8 @@ case class Point(coordinates: Vector[Double]) {
   /** (Optionally) Returns the coordinatewise product of this with other */
   def *(other: Point): Option[Point] = applyCoordinatewise(other)(_ * _)
 
+  def /(other: Point): Option[Point] = applyCoordinatewise(other)(_ / _)
+
   /** (Optionally) Returns the vector difference of this with other */
   def -(other: Point): Option[Point] = this + (other * -1.0)
 
