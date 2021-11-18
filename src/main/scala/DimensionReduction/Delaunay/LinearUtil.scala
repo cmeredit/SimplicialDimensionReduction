@@ -1,7 +1,6 @@
 package DimensionReduction.Delaunay
 
 import DimensionReduction.Point
-
 import spire.math.Rational
 
 /** Provides several Linear Algebra functions.
@@ -69,7 +68,7 @@ object LinearUtil {
   }
 
   /** Computes the row-reduced echelon form of the supplied matrix using Gaussian elimination. */
-  def getRREF(rowMajorMatrix: Vector[Vector[Rational]]): Vector[Vector[Rational]] = {
+  def getRREF(rowMajorMatrix: Vector[Vector[Rational]], normalizeRows: Boolean = true): Vector[Vector[Rational]] = {
 
     def forwardReduce(matrix: Vector[Vector[Rational]]): Vector[Vector[Rational]] = {
       // Find the first nonzero column
@@ -137,7 +136,21 @@ object LinearUtil {
     }
 
     val forwardReducedMatrix: Vector[Vector[Rational]] = forwardReduce(rowMajorMatrix)
-    backSub(forwardReducedMatrix.map(rescaleByPivot))
+
+    if (normalizeRows) backSub(forwardReducedMatrix.map(rescaleByPivot)) else backSub(forwardReducedMatrix)
+  }
+
+  def getAbsoluteDeterminant(matrix: Vector[Vector[Rational]]): Rational = {
+    assert(matrix.nonEmpty)
+    assert(matrix.head.nonEmpty)
+    assert(matrix.head.length == matrix.length)
+    assert(matrix.distinctBy(_.length).distinct.length == 1)
+
+    val unscaledRREF: Vector[Vector[Rational]] = getRREF(matrix, normalizeRows = false)
+
+    val diagonalEntries: Vector[Rational] = unscaledRREF.zipWithIndex.map({case (row, n) => row(n)})
+
+    diagonalEntries.reduce(_ * _).abs
   }
 
   /** Tests if the given points lie on a hyperplane of codimension 1 */
