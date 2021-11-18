@@ -2,6 +2,8 @@ package DimensionReduction
 
 import DimensionReduction.Delaunay.PointedAffineSpace
 
+import scala.io.{BufferedSource, Source}
+
 /** The geometric realization of a simplicial set.
  *
  *  The default constructor builds a simplicial complex from a set of pointed affine spaces. There is no
