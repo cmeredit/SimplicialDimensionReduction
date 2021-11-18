@@ -1,8 +1,7 @@
 package DimensionReduction.Delaunay
 
 import DimensionReduction.Point
-
-import spire.math.Rational
+import spire.math.{Rational, RationalInstances}
 
 /** Provides several Linear Algebra functions.
  *
@@ -69,7 +68,7 @@ object LinearUtil {
   }
 
   /** Computes the row-reduced echelon form of the supplied matrix using Gaussian elimination. */
-  def getRREF(rowMajorMatrix: Vector[Vector[Rational]]): Vector[Vector[Rational]] = {
+  def getRREF(rowMajorMatrix: Vector[Vector[Rational]], normalizeRows: Boolean = true): Vector[Vector[Rational]] = {
 
     def forwardReduce(matrix: Vector[Vector[Rational]]): Vector[Vector[Rational]] = {
       // Find the first nonzero column
@@ -137,7 +136,77 @@ object LinearUtil {
     }
 
     val forwardReducedMatrix: Vector[Vector[Rational]] = forwardReduce(rowMajorMatrix)
-    backSub(forwardReducedMatrix.map(rescaleByPivot))
+
+    if (normalizeRows) backSub(forwardReducedMatrix.map(rescaleByPivot)) else backSub(forwardReducedMatrix)
+  }
+
+  def getAbsoluteDeterminant(matrix: Vector[Vector[Rational]]): Rational = {
+    assert(matrix.nonEmpty)
+    assert(matrix.head.nonEmpty)
+    assert(matrix.head.length == matrix.length)
+    assert(matrix.distinctBy(_.length).distinct.length == 1)
+
+    val unscaledRREF: Vector[Vector[Rational]] = getRREF(matrix, normalizeRows = false)
+
+    val diagonalEntries: Vector[Rational] = unscaledRREF.zipWithIndex.map({case (row, n) => row(n)})
+
+    diagonalEntries.reduce(_ * _).abs
+  }
+
+  def getInverse(matrix: Vector[Vector[Rational]]): Option[Vector[Vector[Rational]]] = {
+    assert(matrix.nonEmpty)
+    assert(matrix.head.nonEmpty)
+    assert(matrix.head.length == matrix.length)
+    assert(matrix.distinctBy(_.length).distinct.length == 1)
+
+    val absoluteDeterminant = getAbsoluteDeterminant(matrix)
+
+    if (absoluteDeterminant == Rational(0.0)) {
+      None
+    } else {
+
+      val dimension: Int = matrix.length
+
+      val identityMatrix: Vector[Vector[Rational]] = (0 until dimension).map(n => {
+        Vector.fill(n)(Rational(0.0)) ++ Vector(Rational(1.0)) ++ Vector.fill(dimension-n-1 max 0)(Rational(0.0))
+      }).toVector
+
+      val concatenatedMatrices: Vector[Vector[Rational]] = matrix.zip(identityMatrix).map({case (matRow, identRow) => matRow ++ identRow})
+
+      val concatenatedRREF: Vector[Vector[Rational]] = getRREF(concatenatedMatrices)
+
+      val inverse: Vector[Vector[Rational]] = concatenatedRREF.map(_.drop(dimension))
+
+      Some(inverse)
+
+    }
+  }
+
+  def matrixMult(m1: Vector[Vector[Rational]], m2: Vector[Vector[Rational]]): Vector[Vector[Rational]] = {
+
+    val m2Transpose: Vector[Vector[Rational]] = m2.transpose
+
+    val m1Cols: Int = m1.head.length
+    val m2Rows: Int = m2.length
+
+    assert(m1Cols == m2Rows)
+
+    val prod: Vector[Vector[Rational]] = m1.map(row => {m2Transpose.map(col => {
+      row.zip(col).map({case (a, b) => a * b}).reduce(_ + _)
+    })})
+
+    prod
+
+  }
+
+  def getProjectionMatrix(basis: Vector[Vector[Rational]]): Vector[Vector[Rational]] = {
+
+    val A: Vector[Vector[Rational]] = basis.transpose
+
+    val center: Vector[Vector[Rational]] = getInverse(matrixMult(A.transpose, A)).get
+
+    matrixMult(matrixMult(A, center), A.transpose)
+
   }
 
   /** Tests if the given points lie on a hyperplane of codimension 1 */
@@ -181,5 +250,48 @@ object LinearUtilTest extends App {
 
 
   println(LinearUtil.getRREF(Vector((b-a).get.map(Rational(_)), (c-a).get.map(Rational(_)))))
+
+}
+
+object InverseTest extends App {
+
+  val m: Vector[Vector[Rational]] = Vector(
+    Vector(Rational(1.0), Rational(2.0), Rational(3.0)),
+    Vector(Rational(6.0), Rational(5.0), Rational(4.0)),
+    Vector(Rational(1.0), Rational(0.0), Rational(0.0))
+  )
+
+  LinearUtil.getInverse(m) match {
+    case Some(inverse) => inverse foreach println
+    case None => println("Uh oh! Matrix wasn't computed...")
+  }
+
+}
+
+object MatrixMultTest extends App {
+  val m: Vector[Vector[Rational]] = Vector(
+    Vector(Rational(1.0), Rational(2.0), Rational(3.0)),
+    Vector(Rational(6.0), Rational(5.0), Rational(4.0)),
+    Vector(Rational(1.0), Rational(0.0), Rational(0.0))
+  )
+
+  LinearUtil.getInverse(m) match {
+    case Some(inverse) => LinearUtil.matrixMult(m, inverse) foreach println
+    case None => println("Uh oh! Matrix wasn't computed...")
+  }
+}
+
+
+object ProjectionTest extends App {
+
+  val basis: Vector[Vector[Rational]] = Vector(Vector(Rational(2.0), Rational(1.0)))
+
+  val P = LinearUtil.getProjectionMatrix(basis)
+
+  P foreach println
+
+  LinearUtil.matrixMult(P, basis.transpose) foreach println
+
+  LinearUtil.matrixMult(P, Vector(Vector(Rational(1.0), Rational(-2.0))).transpose) foreach println
 
 }
