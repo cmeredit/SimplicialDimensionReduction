@@ -280,3 +280,18 @@ object MatrixMultTest extends App {
     case None => println("Uh oh! Matrix wasn't computed...")
   }
 }
+
+
+object ProjectionTest extends App {
+
+  val basis: Vector[Vector[Rational]] = Vector(Vector(Rational(2.0), Rational(1.0)))
+
+  val P = LinearUtil.getProjectionMatrix(basis)
+
+  P foreach println
+
+  LinearUtil.matrixMult(P, basis.transpose) foreach println
+
+  LinearUtil.matrixMult(P, Vector(Vector(Rational(1.0), Rational(-2.0))).transpose) foreach println
+
+}
