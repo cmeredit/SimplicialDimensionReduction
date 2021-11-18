@@ -1,7 +1,7 @@
 package DimensionReduction.Delaunay
 
 import DimensionReduction.Point
-import spire.math.Rational
+import spire.math.{Rational, RationalInstances}
 
 /** Provides several Linear Algebra functions.
  *
@@ -182,6 +182,23 @@ object LinearUtil {
     }
   }
 
+  def matrixMult(m1: Vector[Vector[Rational]], m2: Vector[Vector[Rational]]): Vector[Vector[Rational]] = {
+
+    val m2Transpose: Vector[Vector[Rational]] = m2.transpose
+
+    val m1Rows: Int = m1.length
+    val m2Cols: Int = m2Transpose.length
+
+    assert(m1Rows == m2Cols)
+
+    val prod: Vector[Vector[Rational]] = (0 until m1Rows).map(i => {(0 until m1Rows).map(j => {
+      m1(i).zip(m2Transpose(j)).map({case (a, b) => a * b}).reduce(_ + _)
+    }).toVector}).toVector
+
+    prod
+
+  }
+
   /** Tests if the given points lie on a hyperplane of codimension 1 */
   def doPointsDefineAHyperplaneOfCodimensionOne(points: Vector[Point]): Boolean = {
     if (points.isEmpty) // No points
@@ -224,4 +241,32 @@ object LinearUtilTest extends App {
 
   println(LinearUtil.getRREF(Vector((b-a).get.map(Rational(_)), (c-a).get.map(Rational(_)))))
 
+}
+
+object InverseTest extends App {
+
+  val m: Vector[Vector[Rational]] = Vector(
+    Vector(Rational(1.0), Rational(2.0), Rational(3.0)),
+    Vector(Rational(6.0), Rational(5.0), Rational(4.0)),
+    Vector(Rational(1.0), Rational(0.0), Rational(0.0))
+  )
+
+  LinearUtil.getInverse(m) match {
+    case Some(inverse) => inverse foreach println
+    case None => println("Uh oh! Matrix wasn't computed...")
+  }
+
+}
+
+object MatrixMultTest extends App {
+  val m: Vector[Vector[Rational]] = Vector(
+    Vector(Rational(1.0), Rational(2.0), Rational(3.0)),
+    Vector(Rational(6.0), Rational(5.0), Rational(4.0)),
+    Vector(Rational(1.0), Rational(0.0), Rational(0.0))
+  )
+
+  LinearUtil.getInverse(m) match {
+    case Some(inverse) => LinearUtil.matrixMult(m, inverse) foreach println
+    case None => println("Uh oh! Matrix wasn't computed...")
+  }
 }
