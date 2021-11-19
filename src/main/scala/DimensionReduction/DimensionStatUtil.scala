@@ -1,6 +1,6 @@
 package DimensionReduction
 
-object RandomDistStats {
+object DimensionStatUtil {
 
   def getAverageMinDistanceInHypercube(dimension: Int, numPoints: Int, numRuns: Int = 10): Double = {
 
@@ -26,7 +26,7 @@ object RandomDistStats {
 }
 
 object RandomDistTest extends App {
-  println(RandomDistStats.getAverageMinDistanceInHypercube(4, 147, 1))
-  println(RandomDistStats.getAverageMinDistanceInHypercube(4, 147, 10))
-  println(RandomDistStats.getAverageMinDistanceInHypercube(4, 147, 100))
+  println(DimensionStatUtil.getAverageMinDistanceInHypercube(4, 147, 1))
+  println(DimensionStatUtil.getAverageMinDistanceInHypercube(4, 147, 10))
+  println(DimensionStatUtil.getAverageMinDistanceInHypercube(4, 147, 100))
 }

@@ -1,7 +1,7 @@
 package DataLoaders
 
 import DimensionReduction.Delaunay.{DelaunayUtil, PointedAffineSpace}
-import DimensionReduction.{GeometricSimplicialComplex, Point, RandomDistStats, Simplex}
+import DimensionReduction.{GeometricSimplicialComplex, Point, DimensionStatUtil, Simplex}
 
 import scala.io.{BufferedSource, Source}
 
@@ -148,7 +148,7 @@ object TestSimpIris extends App {
 
 //  assert(false)
 
-  val averageMinDistanceInHypercube: Double = RandomDistStats.getAverageMinDistanceInHypercube(4, 147, 100)
+  val averageMinDistanceInHypercube: Double = DimensionStatUtil.getAverageMinDistanceInHypercube(4, 147, 100)
 
   val edgesToExclude = simp.nSimplices(1).filter(edge => {
     val p0: Point = edge.points.toVector(0)
