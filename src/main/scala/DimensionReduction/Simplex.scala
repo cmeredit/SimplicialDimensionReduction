@@ -1,6 +1,6 @@
 package DimensionReduction
 
-import DimensionReduction.Delaunay.{LinearUtil, PointedAffineSpace}
+import DimensionReduction.Delaunay.PointedAffineSpace
 import spire.math.Rational
 
 case class Simplex(points: Set[Point]) {

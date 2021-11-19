@@ -1,6 +1,6 @@
 package DimensionReduction.Delaunay
 
-import DimensionReduction.Point
+import DimensionReduction.{LinearUtil, Point}
 
 import scala.annotation.tailrec
 import scala.math.random

@@ -2,8 +2,8 @@ package Main
 
 //import ScalaComp.Main
 import DataLoaders.IrisLoader
-import DimensionReduction.Delaunay.{LinearUtil, QuickHullUtil, PointedAffineSpace}
-import DimensionReduction.Point
+import DimensionReduction.Delaunay.{PointedAffineSpace, QuickHullUtil}
+import DimensionReduction.{LinearUtil, Point}
 import org.joml.Matrix4f
 import org.lwjgl._
 import org.lwjgl.glfw.Callbacks._

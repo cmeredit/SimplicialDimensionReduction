@@ -1,7 +1,6 @@
-package DimensionReduction.Delaunay
+package DimensionReduction
 
-import DimensionReduction.Point
-import spire.math.{Rational, RationalInstances}
+import spire.math.Rational
 
 /** Provides several Linear Algebra functions.
  *

@@ -1,7 +1,7 @@
 package DimensionReduction.Delaunay
 
 import DimensionReduction.Delaunay.QuickHullUtil.DebugPrinter
-import DimensionReduction.Point
+import DimensionReduction.{LinearUtil, Point}
 
 import scala.math.{cos, random, sin}
 import scala.util.Random
