@@ -25,7 +25,7 @@ import scala.io.{BufferedSource, Source}
  *  F(δ): F([n]) -> F([n-1]) is interpreted as the function that maps an n-simplex to its i-th face of dimension n-1.
  *
  *  The (n, i)-degeneracy map in Δ is the unique nondecreasing function σ: [n+1] -> [n] whose preimage of i has size 2.
- *  Degeneracy maps are in some since inverse to face maps:
+ *  Degeneracy maps are in some sense inverse to face maps:
  *  F(σ): F([n]) -> F([n+1]) is interpreted as the function that maps an n-simplex to its i-th degenerate simplex.
  *  The degeneracy maps should not be computationally useful. If they are, please alert me and I'll implement them.
  *
