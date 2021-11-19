@@ -455,7 +455,13 @@ object LoadTest extends App {
   culledGeomComp match {
     case Some(complex) =>
       complex.printStatistics(8)
-      println(complex.bruteForceProject(Point(Vector(0.0, 0.0, 0.0, 0.0))))
+      println("Brute force projection...")
+      println(complex.project(Point(Vector(0.0, 0.0, 0.0, 0.0))))
+      println(complex.project(Point(Vector(1.0, 1.0, 1.0, 1.0))))
+      println(complex.project(Point(Vector(0.9444444444444444, 0.7499999999999998, 0.9661016949152542, 0.8750000000000001))))
+
+      // Choose a single vertex from the complex...
+      println(complex.project(complex.simplices.head.points.head))
     case None =>
       println("Red alert! Failed to load simplicial complex from file!")
   }
