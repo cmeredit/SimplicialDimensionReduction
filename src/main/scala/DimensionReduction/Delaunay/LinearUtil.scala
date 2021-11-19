@@ -140,6 +140,39 @@ object LinearUtil {
     if (normalizeRows) backSub(forwardReducedMatrix.map(rescaleByPivot)) else backSub(forwardReducedMatrix)
   }
 
+  def extendToBasis(linearlyIndependentVectors: Vector[Vector[Rational]]): Vector[Vector[Rational]] = {
+
+    val initBasis: Vector[Vector[Rational]] = linearlyIndependentVectors
+
+    val dimension: Int = initBasis.head.length
+
+    println("Dimension:")
+    println(dimension)
+
+    val standardBasis: Vector[Vector[Rational]] = (0 until dimension).map(n => {
+      Vector.fill(n max 0)(Rational(0.0)) ++ Vector(Rational(1.0)) ++ Vector.fill(dimension - n - 1 max 0)(Rational(0.0))
+    }).toVector
+
+    println("Standard basis:")
+    standardBasis foreach println
+
+    standardBasis.foldLeft(initBasis)({case (currentBasis, nextCandidate) =>
+
+      println("Current basis:")
+      currentBasis foreach println
+      println("Candidate:")
+      println(nextCandidate)
+
+      val currentRREF: Vector[Vector[Rational]] = getRREF((currentBasis :+ nextCandidate).transpose)
+
+      // If our rref has a row of zeros, then we're linearly dependent
+      if (currentRREF.exists(row => row.forall(_ == Rational(0.0))))
+        currentBasis
+      else
+        currentBasis :+ nextCandidate
+    })
+  }
+
   def getAbsoluteDeterminant(matrix: Vector[Vector[Rational]]): Rational = {
     assert(matrix.nonEmpty)
     assert(matrix.head.nonEmpty)
@@ -199,14 +232,15 @@ object LinearUtil {
 
   }
 
-  def getProjectionMatrix(basis: Vector[Vector[Rational]]): Vector[Vector[Rational]] = {
+  def getProjectionMatrix(basis: Vector[Vector[Rational]]): Option[Vector[Vector[Rational]]] = {
 
-    val A: Vector[Vector[Rational]] = basis.transpose
+    if (basis.nonEmpty) {
+      val A: Vector[Vector[Rational]] = basis.transpose
 
-    val center: Vector[Vector[Rational]] = getInverse(matrixMult(A.transpose, A)).get
+      val center: Vector[Vector[Rational]] = getInverse(matrixMult(A.transpose, A)).get
 
-    matrixMult(matrixMult(A, center), A.transpose)
-
+      Some(matrixMult(matrixMult(A, center), A.transpose))
+    } else None
   }
 
   /** Tests if the given points lie on a hyperplane of codimension 1 */
@@ -290,8 +324,8 @@ object ProjectionTest extends App {
 
   P foreach println
 
-  LinearUtil.matrixMult(P, basis.transpose) foreach println
+  LinearUtil.matrixMult(P.get, basis.transpose) foreach println
 
-  LinearUtil.matrixMult(P, Vector(Vector(Rational(1.0), Rational(-2.0))).transpose) foreach println
+  LinearUtil.matrixMult(P.get, Vector(Vector(Rational(1.0), Rational(-2.0))).transpose) foreach println
 
 }

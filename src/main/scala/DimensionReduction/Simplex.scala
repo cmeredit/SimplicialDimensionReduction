@@ -15,14 +15,14 @@ case class Simplex(points: Set[Point]) {
     tailPoints.flatMap(_ - basePoint)
   }).coordinates.map(Rational(_))
 
-  private lazy val basis: Vector[Vector[Rational]] = {
+  private lazy val localBasis: Vector[Vector[Rational]] = {
     val basePoint: Point = ptsVec.head
     val tailPoints: Vector[Point] = ptsVec.tail
-    val differences: Vector[Point] = tailPoints.flatMap(_ - basePoint)
+    val differences: Vector[Point] = tailPoints.map(pt => (pt - basePoint).get)
     differences.map(pt => pt.coordinates.map(Rational(_)))
   }
 
-  private lazy val changeOfBasisMatrix: Vector[Vector[Rational]] = LinearUtil.getInverse((basis :+ normalVec).transpose).get
+  private lazy val changeOfBasisMatrix: Vector[Vector[Rational]] = LinearUtil.getInverse((LinearUtil.extendToBasis(localBasis)).transpose).get
 
   def containsPoint(p: Point, tolerance: Rational = Rational(0.0001)): Boolean = {
 
@@ -41,7 +41,7 @@ case class Simplex(points: Set[Point]) {
 //    println("Last entry:")
 //    println(pWRTThisBasis.last.abs.toDouble)
 //    println(pWRTThisBasis.last.abs < tolerance)
-//    println("Point with respect to simplex basis:")
+//    println("Point with respect to simplex localBasis:")
 //    println(pWRTThisBasis.map(_.toDouble))
 //    println(pWRTThisBasis.forall(_ >= Rational(0.0)))
 //    println("Sum of coordinates:")
@@ -54,16 +54,22 @@ case class Simplex(points: Set[Point]) {
   }
 
   // Projection matrix
-  private lazy val P: Vector[Vector[Rational]] = LinearUtil.getProjectionMatrix(basis)
+  private lazy val P: Option[Vector[Vector[Rational]]] = LinearUtil.getProjectionMatrix(localBasis)
 
   private lazy val basePoint: Point = ptsVec.head
 
   def getProjection(p: Point): Option[Point] = {
-    val pColumnVec: Vector[Vector[Rational]] = Vector((p - basePoint).get.map(Rational(_))).transpose
 
-    val projectionOntoHyperplane: Point = Point(LinearUtil.matrixMult(P, pColumnVec).transpose.head.map(_.toDouble))
+    P match {
+      case Some(projMatrix) =>
+        val pColumnVec: Vector[Vector[Rational]] = Vector((p - basePoint).get.map(Rational(_))).transpose
 
-    Some(projectionOntoHyperplane).filter(x => containsPoint(x))
+        val projectionOntoHyperplane: Point = Point(LinearUtil.matrixMult(projMatrix, pColumnVec).transpose.head.map(_.toDouble))
+
+        Some(projectionOntoHyperplane).filter(x => containsPoint(x))
+      case None => Some(basePoint)
+    }
+
   }
 
   override def toString: String = if (points.nonEmpty) {"[" + points.map(_.toString).reduce(_ + ", " + _) + "]"} else "[]"

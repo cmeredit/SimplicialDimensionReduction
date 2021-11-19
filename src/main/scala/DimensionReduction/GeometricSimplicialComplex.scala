@@ -241,6 +241,19 @@ class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace],
     bw.close()
   }
 
+
+
+  def bruteForceProject(point: Point): Point = {
+
+    simplices
+      .flatMap(simplex => {
+        println(simplex)
+        simplex.getProjection(point)
+      })
+      .minBy(proj => point.dist(proj))
+
+  }
+
 }
 
 object GeometricSimplicialComplex {
@@ -381,10 +394,10 @@ object LoadTest extends App {
   culledGeomComp match {
     case Some(complex) =>
       complex.printStatistics(8)
+      println(complex.bruteForceProject(Point(Vector(0.0, 0.0, 0.0, 0.0))))
     case None =>
       println("Red alert! Failed to load simplicial complex from file!")
   }
-
 
 }
 
