@@ -255,6 +255,36 @@ class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace],
 
   }
 
+  def project(point: Point): Point = {
+    val projectionCandidates: Vector[Simplex] = simplices
+      .filter(candidate => ancestorMap(candidate).length < 3)
+      .filter(_.dimension < point.dimension)
+      .flatMap(faceMap)
+      .distinct
+
+    val ownerCandidates: Vector[Simplex] = simplices.diff(projectionCandidates)
+
+    val maybeOwner: Option[Simplex] = ownerCandidates.find(_.containsPoint(point))
+
+    val intelligentProjection = maybeOwner match {
+      case Some(owner) =>
+        //        println("Found a direct owner! Projection is trivial.")
+        point
+      case _ =>
+//        val numProjectionCandidates: Int = projectionCandidates.length
+        projectionCandidates
+          .zipWithIndex
+          .flatMap({case (simplex, k) =>
+//            println("Intelligently working on simplex " + k + " of " + numProjectionCandidates)
+//            println(simplex)
+            simplex.getProjection(point)
+          })
+          .minBy(proj => point.dist(proj))
+    }
+
+    intelligentProjection
+  }
+
 }
 
 object GeometricSimplicialComplex {
