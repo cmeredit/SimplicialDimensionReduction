@@ -246,8 +246,9 @@ class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace],
   def bruteForceProject(point: Point): Point = {
 
     simplices
-      .flatMap(simplex => {
-        println(simplex)
+      .zipWithIndex
+      .flatMap({case (simplex, k) =>
+//        println("Brute force working on simplex " + k + " of " + numBruteForceSimplices)
         simplex.getProjection(point)
       })
       .minBy(proj => point.dist(proj))
