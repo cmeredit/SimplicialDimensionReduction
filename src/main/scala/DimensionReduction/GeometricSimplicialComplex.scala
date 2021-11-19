@@ -141,8 +141,8 @@ class GeometricSimplicialComplex(componentSpaces: Vector[PointedAffineSpace],
     val mutableAncestorMap: scala.collection.mutable.Map[Simplex, Vector[Simplex]] = scala.collection.mutable.Map() ++ simplices.map(simplex => (simplex, Vector[Simplex]())).toMap
 
     simplices.foreach(simplex => {
-      val descendents: Vector[Simplex] = faceMap(simplex)
-      descendents.foreach(descendent => mutableAncestorMap.update(descendent, mutableAncestorMap(descendent) :+ simplex))
+      val descendants: Vector[Simplex] = faceMap(simplex)
+      descendants.foreach(descendant => mutableAncestorMap.update(descendant, mutableAncestorMap(descendant) :+ simplex))
     })
 
 
