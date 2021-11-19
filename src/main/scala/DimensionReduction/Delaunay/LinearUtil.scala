@@ -156,14 +156,14 @@ object LinearUtil {
     println("Standard basis:")
     standardBasis foreach println
 
-    standardBasis.foldLeft(initBasis)({case (currentBasis, nextCandidate) =>
+    val extendedBasis: Vector[Vector[Rational]] = standardBasis.foldLeft(initBasis)({case (currentBasis, nextCandidate) =>
 
       println("Current basis:")
       currentBasis foreach println
       println("Candidate:")
       println(nextCandidate)
 
-      val currentRREF: Vector[Vector[Rational]] = getRREF((currentBasis :+ nextCandidate).transpose)
+      val currentRREF: Vector[Vector[Rational]] = getRREF(currentBasis :+ nextCandidate)
 
       // If our rref has a row of zeros, then we're linearly dependent
       if (currentRREF.exists(row => row.forall(_ == Rational(0.0))))
@@ -171,6 +171,8 @@ object LinearUtil {
       else
         currentBasis :+ nextCandidate
     })
+
+    extendedBasis
   }
 
   def getAbsoluteDeterminant(matrix: Vector[Vector[Rational]]): Rational = {
