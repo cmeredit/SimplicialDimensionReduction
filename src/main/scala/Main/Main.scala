@@ -2,8 +2,8 @@ package Main
 
 //import ScalaComp.Main
 import DataLoaders.IrisLoader
-import DimensionReduction.Delaunay.{LinearUtil, QuickHullUtil, Simplex}
-import DimensionReduction.Point
+import DimensionReduction.Delaunay.{PointedAffineSpace, QuickHullUtil}
+import DimensionReduction.{LinearUtil, Point}
 import org.joml.Matrix4f
 import org.lwjgl._
 import org.lwjgl.glfw.Callbacks._
@@ -40,7 +40,7 @@ object Main extends App {
   private var firstMouse: Boolean = true
 
 
-  private lazy val iris: (Vector[Vector[Float]], Vector[Vector[Float]]) = IrisLoader.getIrisData
+  private lazy val iris: (Vector[Vector[Float]], Vector[Vector[Float]]) = IrisLoader.getIrisData()
 
 
 
@@ -51,7 +51,7 @@ object Main extends App {
   private case object ShouldLoadRandomNormals extends WhatToLoad
   private val whatToLoad: WhatToLoad = ShouldLoadRandom3dSphere
 
-  private val num3dPointsToHull: Int = 500
+  private val num3dPointsToHull: Int = 150
 
   private lazy val hdv: HighDimViewer = {
 
@@ -63,7 +63,7 @@ object Main extends App {
 
         var currentPoints: Vector[Point] = points
         var previousNumPoints: Int = currentPoints.length
-        var currentHull: Vector[Simplex] = QuickHullUtil.getConvexHull(currentPoints)
+        var currentHull: Vector[PointedAffineSpace] = QuickHullUtil.getConvexHull(currentPoints).getOrElse(Vector())
         var currentNumPoints: Int = currentPoints.length
 
         do {
@@ -71,13 +71,13 @@ object Main extends App {
 
           currentPoints = currentHull.flatMap(_.vertices).distinct
 
-          currentHull = QuickHullUtil.getConvexHull(currentPoints)
+          currentHull = QuickHullUtil.getConvexHull(currentPoints).getOrElse(Vector())
 
           currentNumPoints = currentHull.flatMap(_.vertices).distinct.length
         } while (currentNumPoints != previousNumPoints)
 
 
-        val convexHull: Vector[Simplex] = currentHull
+        val convexHull: Vector[PointedAffineSpace] = currentHull
 
         val convexHullVertices: Vector[Point] = convexHull.flatMap(_.vertices)
         val interiorVertices: Vector[Vector[Float]] = points.diff(convexHullVertices).map(_.map(_.toFloat))
@@ -104,20 +104,20 @@ object Main extends App {
 
         }).toVector.map(Point)
 
-        val convexHull: Vector[Simplex] = QuickHullUtil.getConvexHull(points)
+        val convexHull: Vector[PointedAffineSpace] = QuickHullUtil.getConvexHull(points).getOrElse(Vector())
 
         val convexHullVertices: Vector[Point] = convexHull.flatMap(_.vertices)
         val interiorVertices: Vector[Vector[Float]] = points.diff(convexHullVertices).map(_.map(_.toFloat))
 
-        val numPerNormal: Int = 40
+        val numPerNormal: Int = 20
         val normalLength: Double = 0.1
 
 
-        val numConnectingVertices: Int = 60
+        val numConnectingVertices: Int = 40
 
         val floatVertexInfo: Vector[Vector[Float]] = convexHullVertices.map(_.map(_.toFloat)) ++
           interiorVertices ++
-          convexHull.flatMap((s: Simplex) => {
+          convexHull.flatMap((s: PointedAffineSpace) => {
             val centroid: Point = Point(s.vertices.map(_.coordinates).transpose.map(_.sum / 3.0))
             centroid.zip(s.normalVector).map({case (a, b) => (a+b).toFloat})
             centroid.map(_.toFloat)

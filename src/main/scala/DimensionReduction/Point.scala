@@ -14,14 +14,25 @@ case class Point(coordinates: Vector[Double]) {
   /** The dimension of the point. Equal to the length of the coordinates vector. */
   val dimension: Int = coordinates.length
 
+  /** Returns [[coordinates]](i) */
   def apply(i: Int): Double = coordinates(i)
+  /** Returns [[coordinates]].head */
   def head: Double = coordinates.head
+  def tail: Point = Point(coordinates.tail)
+  /** Returns [[coordinates]] zipped with other's coordinates */
   def zip(other: Point): Vector[(Double, Double)] = coordinates.zip(other.coordinates)
+  /** Returns [[coordinates]].zipWithIndex */
   def zipWithIndex: Vector[(Double, Int)] = coordinates.zipWithIndex
+  /** Returns [[coordinates]].map(op) */
   def map[B](op: Double => B): Vector[B] = coordinates.map(op)
+  /** Returns [[coordinates]].nonEmpty */
   def nonEmpty: Boolean = coordinates.nonEmpty
+  /** Returns [[coordinates]].find(p) */
   def find(p: Double => Boolean): Option[Double] = coordinates.find(p)
+  /** Returns [[coordinates]].indices */
   def indices: Range = coordinates.indices
+
+  def droppedLast: Point = Point(coordinates.dropRight(1))
 
   private def applyCoordinatewise(other: Point)(op: (Double, Double) => Double): Option[Point] =
     if (dimension == other.dimension) {
@@ -41,6 +52,8 @@ case class Point(coordinates: Vector[Double]) {
   /** (Optionally) Returns the coordinatewise product of this with other */
   def *(other: Point): Option[Point] = applyCoordinatewise(other)(_ * _)
 
+  def /(other: Point): Option[Point] = applyCoordinatewise(other)(_ / _)
+
   /** (Optionally) Returns the vector difference of this with other */
   def -(other: Point): Option[Point] = this + (other * -1.0)
 
@@ -54,6 +67,6 @@ case class Point(coordinates: Vector[Double]) {
   /** (Optionally) Returns the distance between this and other */
   def dist(other: Point): Option[Double] = distSquared(other).map(sqrt)
 
-  override def toString: String =
-    "Point(Coordinates: " + coordinates.toString() + ", Dimension: " + dimension.toString
+  /** Returns a string representation */
+  override def toString: String = "Point(" + coordinates.map(_.toString).reduce(_ + ", " + _) + ")"
 }
