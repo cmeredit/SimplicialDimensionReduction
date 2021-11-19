@@ -146,22 +146,22 @@ object LinearUtil {
 
     val dimension: Int = initBasis.head.length
 
-    println("Dimension:")
-    println(dimension)
+//    println("Dimension:")
+//    println(dimension)
 
     val standardBasis: Vector[Vector[Rational]] = (0 until dimension).map(n => {
       Vector.fill(n max 0)(Rational(0.0)) ++ Vector(Rational(1.0)) ++ Vector.fill(dimension - n - 1 max 0)(Rational(0.0))
     }).toVector
 
-    println("Standard basis:")
-    standardBasis foreach println
+//    println("Standard basis:")
+//    standardBasis foreach println
 
     val extendedBasis: Vector[Vector[Rational]] = standardBasis.foldLeft(initBasis)({case (currentBasis, nextCandidate) =>
 
-      println("Current basis:")
-      currentBasis foreach println
-      println("Candidate:")
-      println(nextCandidate)
+//      println("Current basis:")
+//      currentBasis foreach println
+//      println("Candidate:")
+//      println(nextCandidate)
 
       val currentRREF: Vector[Vector[Rational]] = getRREF(currentBasis :+ nextCandidate)
 
